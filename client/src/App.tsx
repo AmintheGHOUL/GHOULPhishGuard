@@ -66,7 +66,7 @@ function AppLayout() {
               <div className="flex items-center justify-center w-8 h-8 rounded-md bg-primary">
                 <Shield className="w-4 h-4 text-primary-foreground" />
               </div>
-              <span className="font-semibold text-sm tracking-tight">PhishGuard</span>
+              <span className="font-semibold text-sm tracking-tight">GHOULPhishGuard</span>
             </span>
           </Link>
           <ThemeToggle />
@@ -83,7 +83,7 @@ function AppLayout() {
       </main>
       <footer className="border-t py-6 mt-8">
         <div className="max-w-5xl mx-auto px-4 text-center text-xs text-muted-foreground">
-          PhishGuard — Email Threat Analyzer. Built for education and awareness.
+          GHOULPhishGuard — Email Threat Analyzer. Built for education and awareness.
         </div>
       </footer>
     </div>

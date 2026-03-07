@@ -24,7 +24,7 @@ export default function Techniques() {
           Detection Techniques
         </h1>
         <p className="text-muted-foreground">
-          PhishGuard uses multiple layers of analysis to detect phishing emails. Here is how each technique works and what it catches.
+          GHOULPhishGuard uses multiple layers of analysis to detect phishing emails. Here is how each technique works and what it catches.
         </p>
       </div>
 
@@ -257,7 +257,7 @@ export default function Techniques() {
               <p className="text-muted-foreground">Reply-To: <span className="text-red-500">support@paypal-verify-account.com</span></p>
             </div>
             <p className="text-xs text-muted-foreground">
-              Note: Some legitimate emails have different Return-Path addresses (e.g., emails sent through SendGrid or Mailchimp). PhishGuard accounts for this and does not over-flag these cases.
+              Note: Some legitimate emails have different Return-Path addresses (e.g., emails sent through SendGrid or Mailchimp). GHOULPhishGuard accounts for this and does not over-flag these cases.
             </p>
             <p className="text-xs text-muted-foreground font-medium">Contribution: up to 32 points</p>
           </CardContent>

@@ -237,9 +237,9 @@ export default function Awareness() {
               <div className="flex items-start gap-3">
                 <Shield className="w-5 h-5 text-primary mt-0.5 shrink-0" />
                 <div>
-                  <p className="text-sm font-medium">Use PhishGuard when in doubt</p>
+                  <p className="text-sm font-medium">Use GHOULPhishGuard when in doubt</p>
                   <p className="text-xs text-muted-foreground mt-1">
-                    If you receive an email that feels off, paste its details into PhishGuard. Our analyzer will check for known phishing patterns, verify email authentication, and give you a plain-English explanation of what it found.
+                    If you receive an email that feels off, paste its details into GHOULPhishGuard. Our analyzer will check for known phishing patterns, verify email authentication, and give you a plain-English explanation of what it found.
                   </p>
                 </div>
               </div>

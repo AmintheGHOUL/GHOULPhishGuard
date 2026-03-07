@@ -1,7 +1,7 @@
-# PhishGuard - Email Threat Analyzer
+# GHOULPhishGuard - Email Threat Analyzer
 
 ## Overview
-PhishGuard is a web-based email threat analyzer that checks emails for phishing indicators. Users paste email details and raw headers into the analyzer, and it returns a risk score with plain-English explanations.
+GHOULPhishGuard is a web-based email threat analyzer that checks emails for phishing indicators. Users paste email details and raw headers into the analyzer, and it returns a risk score with plain-English explanations.
 
 The app includes educational pages: a usage guide (how to extract email headers), a phishing awareness guide for non-technical users, and a detection techniques page explaining the methods used.
 

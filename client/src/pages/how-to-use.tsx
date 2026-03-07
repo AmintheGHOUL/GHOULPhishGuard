@@ -21,7 +21,7 @@ export default function HowToUse() {
       <div className="space-y-2">
         <h1 className="text-2xl font-semibold tracking-tight flex items-center gap-3" data-testid="heading-how-to-use">
           <BookOpen className="w-6 h-6 text-primary" />
-          How to Use PhishGuard
+          How to Use GHOULPhishGuard
         </h1>
         <p className="text-muted-foreground">
           This guide shows you how to collect the information you need from a suspicious email and paste it into our analyzer.
@@ -119,7 +119,7 @@ export default function HowToUse() {
                 <p className="text-muted-foreground">Date: Mon, 6 Mar 2026 10:30:00 -0800</p>
               </div>
               <p className="text-xs text-muted-foreground">
-                The highlighted lines above are the authentication headers that PhishGuard uses to check SPF, DKIM, and DMARC.
+                The highlighted lines above are the authentication headers that GHOULPhishGuard uses to check SPF, DKIM, and DMARC.
               </p>
             </CardContent>
           </Card>
@@ -128,7 +128,7 @@ export default function HowToUse() {
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium flex items-center gap-2">
                 <span className="flex items-center justify-center w-6 h-6 rounded-full bg-primary text-primary-foreground text-xs font-bold">4</span>
-                Paste into PhishGuard
+                Paste into GHOULPhishGuard
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
@@ -154,7 +154,7 @@ export default function HowToUse() {
                 </li>
               </ul>
               <p className="text-sm text-muted-foreground">
-                Then click <span className="font-medium text-foreground">Analyze Email</span> and PhishGuard will give you a risk score, explain what it found, and recommend what to do.
+                Then click <span className="font-medium text-foreground">Analyze Email</span> and GHOULPhishGuard will give you a risk score, explain what it found, and recommend what to do.
               </p>
             </CardContent>
           </Card>
@@ -175,7 +175,7 @@ export default function HowToUse() {
                 <li>Open the email</li>
                 <li>Click the three dots at the top right</li>
                 <li>Select <span className="font-medium text-foreground">View &gt; View message source</span></li>
-                <li>Copy everything and paste into PhishGuard</li>
+                <li>Copy everything and paste into GHOULPhishGuard</li>
               </ol>
             </CardContent>
           </Card>
@@ -187,7 +187,7 @@ export default function HowToUse() {
                 <li>Open the email</li>
                 <li>Click the three dots (more actions)</li>
                 <li>Select <span className="font-medium text-foreground">View raw message</span></li>
-                <li>Copy everything and paste into PhishGuard</li>
+                <li>Copy everything and paste into GHOULPhishGuard</li>
               </ol>
             </CardContent>
           </Card>
@@ -199,7 +199,7 @@ export default function HowToUse() {
                 <li>Open the email</li>
                 <li>Go to <span className="font-medium text-foreground">View &gt; Message &gt; All Headers</span></li>
                 <li>Or use <span className="font-medium text-foreground">View &gt; Message &gt; Raw Source</span></li>
-                <li>Copy and paste into PhishGuard</li>
+                <li>Copy and paste into GHOULPhishGuard</li>
               </ol>
             </CardContent>
           </Card>
@@ -211,7 +211,7 @@ export default function HowToUse() {
                 <li>Open the email</li>
                 <li>Go to <span className="font-medium text-foreground">View &gt; Message Source</span></li>
                 <li>Or press <code className="bg-muted px-1 py-0.5 rounded">Ctrl+U</code></li>
-                <li>Copy and paste into PhishGuard</li>
+                <li>Copy and paste into GHOULPhishGuard</li>
               </ol>
             </CardContent>
           </Card>
