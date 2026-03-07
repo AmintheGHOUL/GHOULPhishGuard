@@ -90,9 +90,8 @@ export default function Dashboard() {
       <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-4 flex gap-3">
         <AlertCircle className="w-5 h-5 text-blue-600 dark:text-blue-400 mt-0.5 shrink-0" />
         <div className="text-sm text-blue-900 dark:text-blue-200">
-          <p className="font-medium mb-1">Demo UI Version</p>
           <p className="text-xs opacity-90">
-            This is the public interface showcase. Full phishing analysis runs in the local/development version. View the project on <a href="https://github.com/AmintheGHOUL" target="_blank" rel="noopener noreferrer" className="underline hover:opacity-75">GitHub</a>.
+            This public version showcases the Phish-Guard interface.
           </p>
         </div>
       </div>
