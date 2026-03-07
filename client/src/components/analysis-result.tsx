@@ -254,11 +254,20 @@ export function AnalysisResultView({ result }: AnalysisResultViewProps) {
                 <div className="border-t border-border" />
               )}
 
-              {result.bertAnalysis && result.bertAnalysis.tokenCount > 2 && (
+              {result.bertAnalysis && (result.bertAnalysis.modelSource === "real" || (result.bertAnalysis.tokenCount && result.bertAnalysis.tokenCount > 2)) && (
                 <div className="space-y-3" data-testid="bert-section">
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 flex-wrap">
                     <Brain className="w-3.5 h-3.5 text-primary" />
-                    <span className="text-xs font-medium">BERT Deep Learning</span>
+                    <span className="text-xs font-medium">
+                      {result.bertAnalysis.modelSource === "real" ? "DistilBERT (Real Model)" : "BERT Deep Learning"}
+                    </span>
+                    <span className={`text-[10px] px-1.5 py-0.5 rounded ${
+                      result.bertAnalysis.modelSource === "real"
+                        ? "bg-emerald-500/10 text-emerald-600"
+                        : "bg-amber-500/10 text-amber-600"
+                    }`}>
+                      {result.bertAnalysis.modelSource === "real" ? "Real Model" : "Simulated"}
+                    </span>
                     <span className="text-[10px] px-1.5 py-0.5 rounded bg-primary/10 text-primary">
                       {result.bertAnalysis.modelVersion}
                     </span>
@@ -266,11 +275,23 @@ export function AnalysisResultView({ result }: AnalysisResultViewProps) {
                   <div data-testid="bert-probability">
                     <ProbabilityBar probability={result.bertAnalysis.phishingProbability} label="Phishing Probability" />
                   </div>
-                  <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                    <span>Tokens: <span className="font-mono">{result.bertAnalysis.tokenCount}</span></span>
+                  <div className="flex items-center gap-3 text-xs text-muted-foreground flex-wrap">
+                    {result.bertAnalysis.label && (
+                      <span>Classification: <span className="font-mono font-medium">{result.bertAnalysis.label}</span></span>
+                    )}
+                    {result.bertAnalysis.tokenCount && (
+                      <span>Tokens: <span className="font-mono">{result.bertAnalysis.tokenCount}</span></span>
+                    )}
                     <span>Confidence: <span className="font-mono">{Math.round(result.bertAnalysis.confidence * 100)}%</span></span>
                   </div>
-                  {result.bertAnalysis.attentionInsights.length > 0 && (
+                  {result.bertAnalysis.modelSource === "real" && result.bertAnalysis.phishingProbability >= 0.7 && (
+                    <div className="bg-red-500/10 rounded-md p-2">
+                      <p className="text-xs text-red-600 font-medium">
+                        Real DistilBERT model trained on phishing emails flagged this content as phishing with {Math.round(result.bertAnalysis.phishingProbability * 100)}% confidence.
+                      </p>
+                    </div>
+                  )}
+                  {result.bertAnalysis.attentionInsights && result.bertAnalysis.attentionInsights.length > 0 && (
                     <div>
                       <p className="text-xs text-muted-foreground mb-1.5">Attention-weighted tokens</p>
                       <div className="flex flex-wrap gap-1.5">

@@ -138,21 +138,29 @@ export default function Techniques() {
           <CardHeader className="pb-2">
             <CardTitle className="text-base font-semibold flex items-center gap-2">
               <Brain className="w-5 h-5 text-primary" />
-              3. BERT Deep Learning Classifier
+              3. DistilBERT Deep Learning Classifier
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
             <p className="text-sm text-muted-foreground leading-relaxed">
-              BERT (Bidirectional Encoder Representations from Transformers) is a deep learning model that understands language context. Unlike TF-IDF which treats words independently, BERT understands that "your account has been suspended" is more threatening than each word alone.
+              GHOULPhishGuard uses a real DistilBERT model fine-tuned specifically for phishing email detection. DistilBERT is a compressed version of BERT that retains 97% of the language understanding capability while being 60% faster and 40% smaller.
             </p>
+            <div className="bg-emerald-500/10 rounded-md p-3">
+              <p className="text-xs font-medium text-emerald-700 mb-1">Real Model</p>
+              <p className="text-xs text-muted-foreground">
+                Model: <span className="font-mono font-medium text-foreground">cybersectony/phishing-email-detection-distilbert_v2.4.1</span>
+              </p>
+              <p className="text-xs text-muted-foreground mt-1">
+                This model was trained on a large dataset of phishing and legitimate emails and runs locally using ONNX Runtime (quantized INT8 for efficiency). No data is sent to external servers.
+              </p>
+            </div>
             <div className="bg-muted rounded-md p-3">
-              <p className="text-xs font-mono text-muted-foreground mb-2">Architecture (phishbert-v1-distilled):</p>
+              <p className="text-xs font-mono text-muted-foreground mb-2">Architecture:</p>
               <ul className="text-xs text-muted-foreground space-y-1">
-                <li><span className="font-medium text-foreground">Subword Tokenization</span> — splits text into meaningful fragments ("un" + "auth" + "or" + "ized")</li>
-                <li><span className="font-medium text-foreground">Positional Encoding</span> — encodes where each token appears in the sequence</li>
+                <li><span className="font-medium text-foreground">WordPiece Tokenization</span> — splits text into subword tokens using a 30K vocabulary</li>
+                <li><span className="font-medium text-foreground">6 Transformer Layers</span> — each with multi-head self-attention and feed-forward networks</li>
                 <li><span className="font-medium text-foreground">Self-Attention</span> — each token "attends" to every other token to capture context</li>
-                <li><span className="font-medium text-foreground">Mean Pooling</span> — aggregates all token representations into one vector</li>
-                <li><span className="font-medium text-foreground">Classification Head</span> — linear layer + sigmoid to produce phishing probability</li>
+                <li><span className="font-medium text-foreground">Classification Head</span> — final layer outputs phishing vs legitimate probability</li>
               </ul>
             </div>
             <div className="bg-muted rounded-md p-3">
@@ -165,9 +173,9 @@ export default function Techniques() {
               </p>
             </div>
             <p className="text-xs text-muted-foreground">
-              The model returns the top attention-weighted tokens, showing which parts of the email the model focused on most when making its classification.
+              If the real model is loading or unavailable, GHOULPhishGuard falls back to a simulated BERT classifier with pre-trained weights for uninterrupted analysis.
             </p>
-            <p className="text-xs text-muted-foreground font-medium">Contribution: up to 15 points</p>
+            <p className="text-xs text-muted-foreground font-medium">Contribution: up to 30 points (real model) / 15 points (simulated fallback)</p>
           </CardContent>
         </Card>
 

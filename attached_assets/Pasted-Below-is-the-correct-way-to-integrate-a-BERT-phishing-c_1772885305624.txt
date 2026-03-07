@@ -1,0 +1,230 @@
+Below is the correct way to integrate a BERT phishing classifier into your current architecture.
+
+1. Where BERT should sit in your pipeline
+
+Your analyzer currently looks roughly like this:
+
+Email Input
+   ↓
+Header Analysis
+   ↓
+Content Rules
+   ↓
+Link Analysis
+   ↓
+Risk Score
+
+Add BERT like this:
+
+Email Input
+   ↓
+Preprocessing
+   ↓
+BERT Content Classifier
+   ↓
+Rule Engine
+   ↓
+Domain + URL Checks
+   ↓
+Risk Aggregator
+   ↓
+Final Score + Explanation
+
+BERT becomes the AI language detector layer.
+
+2. Recommended model
+
+Use the lightweight one:
+
+aamoshdahal/email-phishing-distilbert-finetuned
+
+Why:
+
+designed for email phishing
+
+smaller than full BERT
+
+faster for web backend inference
+
+3. Backend installation
+
+Install transformers in your backend environment.
+
+pip install transformers torch
+
+If your backend is Node.js, run the model through a Python microservice.
+
+4. Create a BERT service
+
+Create a file:
+
+ai/phishing_classifier.py
+
+Example:
+
+from transformers import pipeline
+
+classifier = pipeline(
+    "text-classification",
+    model="aamoshdahal/email-phishing-distilbert-finetuned"
+)
+
+def predict_phishing(email_text):
+    result = classifier(email_text)[0]
+
+    return {
+        "label": result["label"],
+        "confidence": float(result["score"])
+    }
+5. Add API endpoint
+
+Create a simple API to call the classifier.
+
+Example with FastAPI:
+
+from fastapi import FastAPI
+from phishing_classifier import predict_phishing
+
+app = FastAPI()
+
+@app.post("/ai/phishing")
+def analyze(data: dict):
+    text = data["text"]
+    return predict_phishing(text)
+
+Run:
+
+uvicorn main:app --port 8001
+6. Call it from your backend
+
+In your Node/Express analyzer:
+
+const response = await fetch("http://localhost:8001/ai/phishing", {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({ text: emailBody })
+});
+
+const aiResult = await response.json();
+
+Example result:
+
+{
+  label: "phishing",
+  confidence: 0.87
+}
+7. Convert BERT output to score
+
+Add to your risk engine:
+
+if confidence > 0.8 → +30 risk
+if confidence > 0.6 → +20 risk
+if confidence > 0.4 → +10 risk
+
+Example:
+
+SVM/Text Model = 0.85 → +30
+Domain impersonation = +25
+Urgency phrases = +10
+
+Final score = 65
+8. Add explanation for users
+
+Your UI should show something like:
+
+AI Language Analysis
+
+Confidence: 87% phishing
+
+Indicators detected:
+• credential harvesting language
+• urgency pattern
+• account verification request
+
+This keeps the system explainable.
+
+9. Important privacy rule
+
+Never send:
+
+full email headers
+full conversations
+attachments
+
+Only send:
+
+body text
+
+And ideally truncate long emails.
+
+Example:
+
+text.slice(0, 2000)
+10. Performance optimization
+
+BERT inference can be slow.
+
+Add caching:
+
+hash(email_text) → cached result
+
+or limit to:
+
+first 1500–2000 characters
+
+Most phishing signals appear early.
+
+11. How to test it
+
+Test with:
+
+Legitimate
+
+Hi team,
+The meeting will start at 2pm tomorrow.
+
+Expected:
+
+phishing probability < 0.2
+
+Phishing
+
+Your account will be suspended immediately.
+Verify your login details now.
+
+Expected:
+
+phishing probability > 0.8
+12. Final architecture of your system
+
+Your system becomes:
+
+PhishGuard
+
+Rule Engine
+   │
+   ├─ Header analysis
+   ├─ Domain impersonation
+   ├─ Link inspection
+   ├─ Reputation APIs
+   └─ AI Language Model (BERT)
+
+All signals → Risk Score → Explanation
+
+This is very close to how enterprise phishing detection works.
+
+One important observation about your project
+
+Your codebase already includes:
+
+domain impersonation detection
+
+TF-IDF analysis
+
+behavioral rules
+
+header parsing
+
+time anomaly detection
+
+Adding BERT turns it into a hybrid AI + rule system, which is exactly how modern systems like Microsoft Defender and Proofpoint operate.

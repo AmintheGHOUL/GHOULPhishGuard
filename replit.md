@@ -8,8 +8,9 @@ The app includes educational pages: a usage guide (how to extract email headers)
 ## Architecture
 - **Backend:** Express.js API running on Replit
 - **Frontend:** React multi-page app with wouter routing
+- **Real ML Model:** DistilBERT phishing classifier (ONNX INT8 quantized, ~64MB) loaded via @huggingface/transformers
 - **No database** - stateless analysis, results are not persisted
-- **No third-party API calls** - all analysis runs locally in-process
+- **No external API calls** - all analysis runs locally in-process (model downloaded once, cached on disk)
 
 ## Security
 - **Helmet** security headers (CSP, X-Frame-Options, MIME sniffing, etc.)
@@ -34,7 +35,8 @@ The app includes educational pages: a usage guide (how to extract email headers)
 - **ML Ensemble** — three classifiers combined:
   - TF-IDF keyword analysis (107 phishing terms + 13 damper terms)
   - TF-IDF + Linear SVM (150-feature vocabulary + bigram features + pre-trained weights)
-  - BERT deep learning (subword tokenization + self-attention + classification head, model: phishbert-v1-distilled)
+  - **Real DistilBERT** (cybersectony/phishing-email-detection-distilbert_v2.4.1, ONNX via @huggingface/transformers, up to 30 pts)
+  - Simulated BERT fallback (phishbert-v1-distilled, used when real model is loading/unavailable, up to 15 pts)
 - Domain impersonation detection (Levenshtein distance typosquatting + homoglyph look-alike characters)
 - Full email header parsing (SPF, DKIM, DMARC verification)
 - Time-of-day anomaly detection (unusual send times)
@@ -77,7 +79,8 @@ server/
     domainImpersonation.ts - Levenshtein + homoglyph + brand detection
     tfidfClassifier.ts     - TF-IDF text mining classifier
     svmClassifier.ts       - TF-IDF + Linear SVM with pre-trained weights (150 features + bigrams)
-    bertClassifier.ts      - BERT-inspired classifier (subword tokenization, self-attention, classification head)
+    realBertClassifier.ts  - Real DistilBERT classifier via @huggingface/transformers (ONNX INT8, lazy-loaded, cached)
+    bertClassifier.ts      - Simulated BERT fallback (subword tokenization, self-attention, classification head)
     timeAnomaly.ts         - Time-of-day anomaly detection
     headerParser.ts        - Full email header parsing (SPF/DKIM/DMARC)
     contentRules.ts        - Heuristic pattern matching

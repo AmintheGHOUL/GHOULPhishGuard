@@ -41,9 +41,11 @@ export interface SvmDetail {
 export interface BertDetail {
   phishingProbability: number;
   confidence: number;
-  tokenCount: number;
-  attentionInsights: Array<{ token: string; importance: number }>;
+  tokenCount?: number;
+  attentionInsights?: Array<{ token: string; importance: number }>;
   modelVersion: string;
+  modelSource: "real" | "simulated";
+  label?: string;
 }
 
 export interface ImpersonationDetail {

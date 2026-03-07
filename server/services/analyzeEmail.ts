@@ -5,6 +5,7 @@ import { parseEmailHeaders, headerAuthFindings, hasRealAuthHeaders } from "./hea
 import { classifyWithTfidf } from "./tfidfClassifier";
 import { classifyWithSvm } from "./svmClassifier";
 import { classifyWithBert } from "./bertClassifier";
+import { classifyWithRealBert } from "./realBertClassifier";
 import { detectDomainImpersonation } from "./domainImpersonation";
 import { detectTimeAnomaly, extractDateFromHeaders } from "./timeAnomaly";
 import type { EmailInput, AnalysisResult } from "@shared/schema";
@@ -249,34 +250,73 @@ export async function analyzeEmail(email: EmailInput): Promise<AnalysisResult> {
     technicalDetails.svmConfidence = `${Math.round(svmResult.confidence * 100)}%`;
   }
 
-  const bertResult = classifyWithBert(fullText);
   let bertAnalysis: AnalysisResult["bertAnalysis"] = undefined;
 
-  if (bertResult.tokenCount > 2) {
-    const bertContribution = Math.round(bertResult.phishingProbability * 15);
+  const realBertResult = await classifyWithRealBert(fullText);
+
+  if (realBertResult) {
+    const bertContribution = realBertResult.phishingProbability > 0.8
+      ? Math.round(realBertResult.phishingProbability * 30)
+      : realBertResult.phishingProbability > 0.6
+        ? Math.round(realBertResult.phishingProbability * 20)
+        : realBertResult.phishingProbability > 0.4
+          ? Math.round(realBertResult.phishingProbability * 10)
+          : 0;
     score += bertContribution;
 
-    if (bertResult.phishingProbability >= 0.7) {
+    if (realBertResult.phishingProbability >= 0.7) {
       reasons.push(
-        `BERT deep learning model classifies this as likely phishing (${Math.round(bertResult.phishingProbability * 100)}% confidence).`
+        `DistilBERT deep learning model classifies this as phishing (${Math.round(realBertResult.phishingProbability * 100)}% confidence).`
       );
-    } else if (bertResult.phishingProbability >= 0.4) {
+    } else if (realBertResult.phishingProbability >= 0.4) {
       reasons.push(
-        `BERT model detected moderate phishing characteristics (${Math.round(bertResult.phishingProbability * 100)}% probability).`
+        `DistilBERT model detected moderate phishing characteristics (${Math.round(realBertResult.phishingProbability * 100)}% probability).`
       );
     }
 
     bertAnalysis = {
-      phishingProbability: bertResult.phishingProbability,
-      confidence: bertResult.confidence,
-      tokenCount: bertResult.tokenCount,
-      attentionInsights: bertResult.attentionInsights.slice(0, 8),
-      modelVersion: bertResult.modelVersion,
+      phishingProbability: realBertResult.phishingProbability,
+      confidence: realBertResult.confidence,
+      modelVersion: realBertResult.modelVersion,
+      modelSource: "real",
+      label: realBertResult.label,
     };
 
-    technicalDetails.bertProbability = `${Math.round(bertResult.phishingProbability * 100)}%`;
-    technicalDetails.bertConfidence = `${Math.round(bertResult.confidence * 100)}%`;
-    technicalDetails.bertModel = bertResult.modelVersion;
+    technicalDetails.bertProbability = `${Math.round(realBertResult.phishingProbability * 100)}%`;
+    technicalDetails.bertConfidence = `${Math.round(realBertResult.confidence * 100)}%`;
+    technicalDetails.bertModel = realBertResult.modelVersion;
+    technicalDetails.bertSource = "real";
+  } else {
+    const bertResult = classifyWithBert(fullText);
+
+    if (bertResult.tokenCount > 2) {
+      const bertContribution = Math.round(bertResult.phishingProbability * 15);
+      score += bertContribution;
+
+      if (bertResult.phishingProbability >= 0.7) {
+        reasons.push(
+          `BERT simulated model classifies this as likely phishing (${Math.round(bertResult.phishingProbability * 100)}% confidence).`
+        );
+      } else if (bertResult.phishingProbability >= 0.4) {
+        reasons.push(
+          `BERT simulated model detected moderate phishing characteristics (${Math.round(bertResult.phishingProbability * 100)}% probability).`
+        );
+      }
+
+      bertAnalysis = {
+        phishingProbability: bertResult.phishingProbability,
+        confidence: bertResult.confidence,
+        tokenCount: bertResult.tokenCount,
+        attentionInsights: bertResult.attentionInsights.slice(0, 8),
+        modelVersion: bertResult.modelVersion,
+        modelSource: "simulated",
+      };
+
+      technicalDetails.bertProbability = `${Math.round(bertResult.phishingProbability * 100)}%`;
+      technicalDetails.bertConfidence = `${Math.round(bertResult.confidence * 100)}%`;
+      technicalDetails.bertModel = bertResult.modelVersion;
+      technicalDetails.bertSource = "simulated";
+    }
   }
 
   score = Math.max(0, Math.min(100, score));
