@@ -1,3 +1,17 @@
+const BRAND_ALIASES: Record<string, string[]> = {
+  "microsoft.com": ["microsoft.net", "microsoftonline.com", "live.com", "hotmail.com", "office.com", "office365.com"],
+  "google.com": ["gmail.com", "googlemail.com", "youtube.com"],
+  "apple.com": ["icloud.com", "me.com", "mac.com"],
+  "amazon.com": ["amazon.co.uk", "amazon.de", "amazon.fr", "amazon.ca"],
+  "paypal.com": ["paypal.co.uk", "paypal.me"],
+  "facebook.com": ["fb.com", "instagram.com", "meta.com"],
+  "docusign.com": ["docusign.net"],
+  "linkedin.com": ["linkedin.cn"],
+  "chase.com": ["chase.co.uk"],
+  "stripe.com": ["stripe.dev"],
+  "github.com": ["github.io", "githubusercontent.com"],
+};
+
 const KNOWN_BRANDS: Record<string, string[]> = {
   "microsoft.com": ["microsoft", "outlook", "office365", "onedrive", "sharepoint", "teams"],
   "google.com": ["google", "gmail", "youtube", "drive", "docs"],
@@ -125,6 +139,10 @@ export function detectDomainImpersonation(senderDomain: string): ImpersonationRe
 
   for (const [realDomain, keywords] of Object.entries(KNOWN_BRANDS)) {
     if (domainLower === realDomain || domainLower.endsWith("." + realDomain)) continue;
+
+    const aliases = BRAND_ALIASES[realDomain] || [];
+    const isAlias = aliases.some((alias) => domainLower === alias || domainLower.endsWith("." + alias));
+    if (isAlias) continue;
 
     const brandName = realDomain.split(".")[0];
 

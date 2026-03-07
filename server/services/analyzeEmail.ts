@@ -157,7 +157,7 @@ export async function analyzeEmail(email: EmailInput): Promise<AnalysisResult> {
     }
   }
 
-  const contentAnalysis = analyzeContent(bodyText, subject);
+  const contentAnalysis = analyzeContent(bodyText, subject, links);
   score += contentAnalysis.score;
   reasons.push(...contentAnalysis.findings);
 

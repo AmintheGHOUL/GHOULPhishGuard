@@ -25,19 +25,29 @@ const SENSITIVE_REQUEST_PATTERNS = [
   /credit card/i,
   /social security/i,
   /login credentials/i,
+  /routing number/i,
+  /payroll details/i,
+  /direct deposit/i,
+  /ssn/i,
+  /tax\s*(id|number|return)/i,
 ];
 
 const PLATFORM_ABUSE_PATTERNS = [
   /forms\.gle/i,
   /docs\.google\.com\/forms/i,
+  /sites\.google\.com/i,
   /notion\.site/i,
   /dropbox\.com/i,
   /onedrive/i,
   /sharepoint/i,
+  /sway\.office\.com/i,
+  /docs\.google\.com\/document/i,
 ];
 
-export function analyzeContent(bodyText = "", subject = "") {
+export function analyzeContent(bodyText = "", subject = "", links: Array<{ href: string }> = []) {
   const text = `${subject} ${bodyText}`;
+  const linkUrls = links.map((l) => l.href || "").join(" ");
+  const combinedText = `${text} ${linkUrls}`;
   const findings: string[] = [];
   let score = 0;
 
@@ -56,8 +66,8 @@ export function analyzeContent(bodyText = "", subject = "") {
     score += 12;
   }
 
-  if (PLATFORM_ABUSE_PATTERNS.some((r) => r.test(text))) {
-    findings.push("This email may rely on a legitimate platform that attackers commonly abuse to evade detection.");
+  if (PLATFORM_ABUSE_PATTERNS.some((r) => r.test(combinedText))) {
+    findings.push("This email links to a legitimate platform that attackers commonly abuse to evade detection (e.g., Google Forms, Google Sites, SharePoint).");
     score += 8;
   }
 
