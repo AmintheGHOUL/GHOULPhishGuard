@@ -130,7 +130,7 @@ function AppLayout() {
               href="https://github.com/AmintheGHOUL"
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center gap-1.5 text-muted-foreground hover:text-foreground transition-colors"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-all"
             >
               <Github className="w-3.5 h-3.5" />
               GitHub
@@ -139,15 +139,17 @@ function AppLayout() {
               href="https://amintheghoul.medium.com"
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center gap-1.5 text-muted-foreground hover:text-foreground transition-colors"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-all"
             >
               <Newspaper className="w-3.5 h-3.5" />
               Medium
             </a>
           </div>
 
-          <div className="flex items-center justify-center pt-3">
-            <LinkedInBadge />
+          <div className="flex items-center justify-center pt-4 mt-4 border-t border-border/30">
+            <div className="bg-gradient-to-b from-primary/5 to-transparent rounded-lg p-6 shadow-sm border border-primary/10">
+              <LinkedInBadge />
+            </div>
           </div>
         </div>
       </footer>
