@@ -57,6 +57,43 @@ function AppRouter() {
   );
 }
 
+function LinkedInBadge() {
+  useEffect(() => {
+    const existing = document.querySelector('script[src="https://platform.linkedin.com/badges/js/profile.js"]');
+    if (existing) {
+      existing.remove();
+    }
+    const script = document.createElement("script");
+    script.src = "https://platform.linkedin.com/badges/js/profile.js";
+    script.async = true;
+    script.defer = true;
+    script.type = "text/javascript";
+    document.body.appendChild(script);
+    return () => {
+      script.remove();
+    };
+  }, []);
+
+  return (
+    <div
+      className="badge-base LI-profile-badge"
+      data-locale="en_US"
+      data-size="medium"
+      data-theme="dark"
+      data-type="VERTICAL"
+      data-vanity="amin-majdi-al-sammar"
+      data-version="v1"
+    >
+      <a
+        className="badge-base__link LI-simple-link"
+        href="https://www.linkedin.com/in/amin-majdi-al-sammar?trk=profile-badge"
+      >
+        Amin Al-Sammar
+      </a>
+    </div>
+  );
+}
+
 function AppLayout() {
   return (
     <div className="min-h-screen flex flex-col">
@@ -110,24 +147,10 @@ function AppLayout() {
           </div>
 
           <div className="flex items-center justify-center pt-3">
-            <div 
-              className="badge-base LI-profile-badge" 
-              data-locale="en_US" 
-              data-size="medium" 
-              data-theme="dark" 
-              data-type="VERTICAL" 
-              data-vanity="amin-majdi-al-sammar" 
-              data-version="v1"
-            >
-              <a className="badge-base__link LI-simple-link" href="https://www.linkedin.com/in/amin-majdi-al-sammar?trk=profile-badge">
-                Amin Al-Sammar
-              </a>
-            </div>
+            <LinkedInBadge />
           </div>
         </div>
       </footer>
-
-      <script src="https://platform.linkedin.com/badges/js/profile.js" async defer type="text/javascript"></script>
     </div>
   );
 }

@@ -40,10 +40,11 @@ export async function registerRoutes(
       contentSecurityPolicy: {
         directives: {
           defaultSrc: ["'self'"],
-          scriptSrc: ["'self'", "'unsafe-inline'"],
+          scriptSrc: ["'self'", "'unsafe-inline'", "https://platform.linkedin.com"],
           styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
           fontSrc: ["'self'", "https://fonts.gstatic.com"],
-          imgSrc: ["'self'", "data:"],
+          imgSrc: ["'self'", "data:", "https://static.licdn.com", "https://media.licdn.com"],
+          frameSrc: ["'self'", "https://www.linkedin.com"],
           connectSrc: ["'self'", "ws:", "wss:"],
         },
       },
