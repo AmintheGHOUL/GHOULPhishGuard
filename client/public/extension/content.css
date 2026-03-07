@@ -223,3 +223,20 @@
   border-bottom: 1px solid #f1f5f9;
 }
 .phg-toggle-btn:hover { color: #0f172a; }
+
+.phg-tfidf-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.phg-tfidf-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: #f1f5f9;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-family: monospace;
+  font-size: 11px;
+  color: #334155;
+}

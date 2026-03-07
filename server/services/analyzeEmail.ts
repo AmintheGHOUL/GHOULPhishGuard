@@ -2,6 +2,7 @@ import { analyzeContent } from "./contentRules";
 import { extractFirstHttpLink, findDomainMismatch } from "./reputation";
 import { safeUrl, getDomainFromEmail, getBaseDomain } from "./domains";
 import { parseEmailHeaders, headerAuthFindings, hasRealAuthHeaders } from "./headerParser";
+import { classifyWithTfidf } from "./tfidfClassifier";
 import type { EmailInput, AnalysisResult } from "@shared/schema";
 
 function detectSuspiciousAttachments(attachments: Array<{ filename: string }> = []) {
@@ -152,6 +153,37 @@ export async function analyzeEmail(email: EmailInput): Promise<AnalysisResult> {
   reasons.push(...linkAnalysis.findings);
   Object.assign(technicalDetails, linkAnalysis.technical);
 
+  const fullText = `${subject} ${bodyText}`;
+  const tfidfResult = classifyWithTfidf(fullText);
+
+  let tfidfAnalysis: AnalysisResult["tfidfAnalysis"] = undefined;
+
+  if (tfidfResult.totalTermsMatched > 0) {
+    const tfidfContribution = Math.round(tfidfResult.phishingScore * 0.35);
+    score += tfidfContribution;
+
+    if (tfidfResult.phishingScore >= 40 && tfidfResult.topTerms.length > 0) {
+      const topWords = tfidfResult.topTerms.slice(0, 5).map((t) => t.term);
+      reasons.push(
+        `TF-IDF text analysis detected high-frequency phishing indicators: ${topWords.join(", ")}.`
+      );
+    } else if (tfidfResult.phishingScore >= 15 && tfidfResult.topTerms.length > 0) {
+      const topWords = tfidfResult.topTerms.slice(0, 3).map((t) => t.term);
+      reasons.push(
+        `Text analysis found some phishing-related terms: ${topWords.join(", ")}.`
+      );
+    }
+
+    tfidfAnalysis = {
+      phishingScore: tfidfResult.phishingScore,
+      topTerms: tfidfResult.topTerms.slice(0, 8),
+      totalTermsMatched: tfidfResult.totalTermsMatched,
+    };
+
+    technicalDetails.tfidfScore = String(tfidfResult.phishingScore);
+    technicalDetails.tfidfTermsMatched = String(tfidfResult.totalTermsMatched);
+  }
+
   score = Math.max(0, Math.min(100, score));
 
   const userActions: string[] = [];
@@ -174,5 +206,6 @@ export async function analyzeEmail(email: EmailInput): Promise<AnalysisResult> {
     userActions: dedupe(userActions),
     technicalDetails,
     headerAnalysis,
+    tfidfAnalysis,
   };
 }

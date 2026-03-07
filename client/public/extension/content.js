@@ -112,6 +112,30 @@ function scoreClass(score) {
   return 'low';
 }
 
+function renderTfidf(result) {
+  if (!result.tfidfAnalysis || !result.tfidfAnalysis.totalTermsMatched) return '';
+  const ta = result.tfidfAnalysis;
+  const barColor = ta.phishingScore >= 50 ? '#ef4444' : ta.phishingScore >= 25 ? '#f97316' : '#10b981';
+  const terms = (ta.topTerms || []).map((t) =>
+    `<span class="phg-tfidf-tag">${escapeHtml(t.term)} <span style="color:#94a3b8">${t.tfidf.toFixed(3)}</span></span>`
+  ).join('');
+
+  return `
+    <div class="phg-section">
+      <h3>TF-IDF Text Analysis</h3>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+        <span style="font-size:11px;color:#94a3b8;">Phishing Language Score</span>
+        <span style="font-weight:600;color:${barColor}">${ta.phishingScore}/100</span>
+      </div>
+      <div style="width:100%;background:#334155;border-radius:4px;height:6px;margin-bottom:10px;">
+        <div style="width:${Math.min(ta.phishingScore, 100)}%;background:${barColor};height:6px;border-radius:4px;transition:width 0.3s;"></div>
+      </div>
+      ${terms ? `<div style="margin-bottom:8px;font-size:11px;color:#94a3b8;">Top indicators by TF-IDF weight</div><div class="phg-tfidf-tags">${terms}</div>` : ''}
+      <div style="font-size:11px;color:#94a3b8;margin-top:6px;">${ta.totalTermsMatched} phishing-related term${ta.totalTermsMatched !== 1 ? 's' : ''} detected</div>
+    </div>
+  `;
+}
+
 function renderResult(result) {
   const sc = scoreClass(result.riskScore);
   const reasons = (result.reasons || []).map((r) => `<li>${escapeHtml(r)}</li>`).join('');
@@ -160,6 +184,8 @@ function renderResult(result) {
     </div>
 
     ${authSection}
+
+    ${renderTfidf(result)}
 
     <div class="phg-section">
       <h3>Findings</h3>

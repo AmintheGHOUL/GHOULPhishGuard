@@ -13,6 +13,8 @@ import {
   ShieldCheck,
   ShieldX,
   ShieldAlert,
+  Brain,
+  BarChart3,
 } from "lucide-react";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
@@ -77,6 +79,68 @@ export function AnalysisResultView({ result }: AnalysisResultViewProps) {
             <p className="text-xs text-muted-foreground mt-3 text-center" data-testid="text-received-hops">
               {result.headerAnalysis.receivedHops} server hop{result.headerAnalysis.receivedHops !== 1 ? "s" : ""} detected
             </p>
+          </CardContent>
+        </Card>
+      )}
+
+      {result.tfidfAnalysis && result.tfidfAnalysis.totalTermsMatched > 0 && (
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-medium flex items-center gap-2">
+              <Brain className="w-4 h-4 text-muted-foreground" />
+              TF-IDF Text Analysis
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              <div className="flex items-center justify-between" data-testid="tfidf-score">
+                <span className="text-xs text-muted-foreground">Phishing Language Score</span>
+                <span className={cn(
+                  "text-sm font-semibold",
+                  result.tfidfAnalysis.phishingScore >= 50 ? "text-red-500" :
+                  result.tfidfAnalysis.phishingScore >= 25 ? "text-orange-500" :
+                  "text-emerald-500"
+                )}>
+                  {result.tfidfAnalysis.phishingScore}/100
+                </span>
+              </div>
+              <div className="w-full bg-muted rounded-full h-1.5">
+                <div
+                  className={cn(
+                    "h-1.5 rounded-full transition-all",
+                    result.tfidfAnalysis.phishingScore >= 50 ? "bg-red-500" :
+                    result.tfidfAnalysis.phishingScore >= 25 ? "bg-orange-500" :
+                    "bg-emerald-500"
+                  )}
+                  style={{ width: `${Math.min(result.tfidfAnalysis.phishingScore, 100)}%` }}
+                />
+              </div>
+              {result.tfidfAnalysis.topTerms.length > 0 && (
+                <div>
+                  <p className="text-xs text-muted-foreground mb-2 flex items-center gap-1">
+                    <BarChart3 className="w-3 h-3" />
+                    Top phishing indicators by TF-IDF weight
+                  </p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {result.tfidfAnalysis.topTerms.map((t, i) => (
+                      <span
+                        key={i}
+                        className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-muted text-xs font-mono"
+                        data-testid={`tfidf-term-${i}`}
+                      >
+                        {t.term}
+                        <span className="text-muted-foreground">
+                          {t.tfidf.toFixed(3)}
+                        </span>
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+              <p className="text-xs text-muted-foreground" data-testid="tfidf-terms-matched">
+                {result.tfidfAnalysis.totalTermsMatched} phishing-related term{result.tfidfAnalysis.totalTermsMatched !== 1 ? "s" : ""} detected
+              </p>
+            </div>
           </CardContent>
         </Card>
       )}

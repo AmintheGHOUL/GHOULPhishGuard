@@ -24,6 +24,12 @@ export interface AuthDetail {
   detail: string;
 }
 
+export interface TfidfDetail {
+  phishingScore: number;
+  topTerms: Array<{ term: string; tfidf: number }>;
+  totalTermsMatched: number;
+}
+
 export interface AnalysisResult {
   riskScore: number;
   verdict: string;
@@ -38,4 +44,5 @@ export interface AnalysisResult {
     receivedHops: number;
     headersParsed: boolean;
   };
+  tfidfAnalysis?: TfidfDetail;
 }
