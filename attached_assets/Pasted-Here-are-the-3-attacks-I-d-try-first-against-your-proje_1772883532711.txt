@@ -1,0 +1,153 @@
+Here are the 3 attacks I’d try first against your project if I were reviewing it from an attacker’s perspective.
+
+1. Sensitive email data leaking through API logs
+
+In server/index.ts, your middleware captures and logs the full JSON response for API routes:
+
+if (capturedJsonResponse) {
+  logLine += ` :: ${JSON.stringify(capturedJsonResponse)}`;
+}
+
+Why this is dangerous:
+
+/api/analyze-email returns analysis output that can include user-submitted sender info, subject, links, headers, and reasoning derived from private email content.
+
+If logs are stored by the host, cloud platform, Docker, or error tooling, private email data can leak without the user realizing it.
+
+What an attacker would do:
+
+Gain access to app logs
+
+Abuse log aggregation access
+
+Exploit another bug that exposes logs
+
+Fix:
+
+Log only request metadata, status, and duration
+
+Never log response bodies for this endpoint
+
+Use something like:
+
+log(`${req.method} ${path} ${res.statusCode} in ${duration}ms`);
+2. Cross-origin abuse because your API effectively trusts any website
+
+In server/routes.ts, your CORS logic reflects the requester’s origin:
+
+res.header("Access-Control-Allow-Origin", req.headers.origin || "*");
+res.header("Access-Control-Allow-Credentials", "true");
+
+Why this is dangerous:
+
+Any website can make browser requests to your API
+
+A malicious page could trick a user into submitting email content to your backend from another origin
+
+If you later add auth/cookies, this becomes even worse
+
+What an attacker would do:
+
+Host a fake page that silently posts email text or sample content to your API
+
+Abuse your backend as a free phishing-analysis service
+
+Burn your quotas or use your system for automated testing
+
+Fix:
+
+Allow only your real frontend origin
+
+Remove credential support unless truly needed
+
+Reject unknown origins
+
+Example:
+
+const allowedOrigins = ["https://yourdomain.com"];
+
+const origin = req.headers.origin;
+if (origin && allowedOrigins.includes(origin)) {
+  res.header("Access-Control-Allow-Origin", origin);
+}
+3. Denial-of-service through oversized requests and no rate limiting
+
+Your app accepts JSON input for email analysis, but I don’t see:
+
+a JSON body size limit
+
+API rate limiting
+
+In server/index.ts you use:
+
+app.use(
+  express.json({
+    verify: (req, _res, buf) => {
+      req.rawBody = buf;
+    },
+  }),
+);
+
+And in server/routes.ts the analysis route is open:
+
+app.post("/api/analyze-email", async (req, res) => {
+  ...
+  const result = await analyzeEmail(parsed.data);
+  res.json(result);
+});
+
+Why this is dangerous:
+
+An attacker can send very large email bodies
+
+They can send many requests quickly
+
+Your text analysis, TF-IDF, header parsing, and rule engine all add CPU work
+
+What an attacker would do:
+
+Flood /api/analyze-email
+
+Submit giant bodyText and rawHeaders
+
+Exhaust CPU and memory, making the service unusable for real users
+
+Fix:
+
+Add request-size limits
+
+Add per-IP rate limiting
+
+Add timeouts
+
+Example:
+
+app.use(express.json({ limit: "200kb" }));
+
+and
+
+import rateLimit from "express-rate-limit";
+
+app.use("/api", rateLimit({
+  windowMs: 60 * 1000,
+  max: 30,
+}));
+Bonus concern
+
+Your server listens on:
+
+host: "0.0.0.0"
+
+That is fine for public deployment, but it means the app is exposed on the network unless protected by proper reverse-proxy, firewall, and rate limiting.
+
+Priority order to fix
+
+Fix these in this order:
+
+Remove response-body logging
+
+Lock down CORS
+
+Add rate limiting and input-size limits
+
+After that, add helmet(), review frontend rendering for unsafe HTML, and make sure no full email content is ever sent to third-party reputation APIs.
