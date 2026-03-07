@@ -13,6 +13,8 @@ import {
   AlertTriangle,
   Monitor,
   Smartphone,
+  Lock,
+  Info,
 } from "lucide-react";
 
 export default function HowToUse() {
@@ -228,6 +230,67 @@ export default function HowToUse() {
                 When examining a suspicious email, never click on any links inside it. Instead, hover over links to see where they actually point, and copy/paste the URL text manually into the Links section of the analyzer if needed. If you accidentally click a link, close the page immediately and change your passwords.
               </p>
             </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card className="border-amber-500/20 bg-amber-500/5">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base font-semibold flex items-center gap-2">
+            <Info className="w-5 h-5 text-amber-600" />
+            Security & Disclaimer
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div>
+            <p className="text-sm font-medium mb-2">Project Purpose</p>
+            <p className="text-xs text-muted-foreground leading-relaxed">
+              GHOULPhishGuard is an educational project designed to demonstrate knowledge of email phishing detection techniques and machine learning classifiers. This is a learning tool, not a professional security service.
+            </p>
+          </div>
+
+          <div>
+            <p className="text-sm font-medium mb-2 flex items-center gap-2">
+              <Lock className="w-4 h-4" />
+              Security Measures Implemented
+            </p>
+            <ul className="text-xs text-muted-foreground space-y-1.5">
+              <li className="flex items-start gap-2">
+                <span className="text-primary mt-1">•</span>
+                <span><span className="font-medium text-foreground">Rate Limiting</span> — Maximum 20 requests per minute per IP address</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="text-primary mt-1">•</span>
+                <span><span className="font-medium text-foreground">Input Validation</span> — All user inputs validated and sanitized with Zod schemas (max field lengths enforced)</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="text-primary mt-1">•</span>
+                <span><span className="font-medium text-foreground">CORS Protection</span> — Configurable allowed origins to prevent unauthorized cross-origin requests</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="text-primary mt-1">•</span>
+                <span><span className="font-medium text-foreground">Security Headers</span> — Helmet.js applied with Content Security Policy and X-Frame-Options</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="text-primary mt-1">•</span>
+                <span><span className="font-medium text-foreground">Response Sanitization</span> — User input is never logged or returned in error messages</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="text-primary mt-1">•</span>
+                <span><span className="font-medium text-foreground">Stateless Processing</span> — All analysis runs locally in-process with no external API calls or data storage</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="text-primary mt-1">•</span>
+                <span><span className="font-medium text-foreground">Body Size Limits</span> — Maximum 500KB request size to prevent resource exhaustion</span>
+              </li>
+            </ul>
+          </div>
+
+          <div className="bg-muted rounded-md p-3">
+            <p className="text-xs font-medium text-foreground mb-2">Liability Disclaimer</p>
+            <p className="text-xs text-muted-foreground leading-relaxed">
+              GHOULPhishGuard is provided "as-is" for educational purposes. We are not responsible for any damages, data loss, or security incidents that may result from the use or misuse of this tool. The phishing risk scores and analysis provided are heuristic-based and should not be considered definitive. Always use your judgment and official security guidelines when dealing with suspicious emails. For critical security decisions, consult with your organization's IT security team or email provider.
+            </p>
           </div>
         </CardContent>
       </Card>
