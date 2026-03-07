@@ -15,6 +15,8 @@ import {
   ShieldAlert,
   Brain,
   BarChart3,
+  Globe,
+  Clock,
 } from "lucide-react";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
@@ -52,6 +54,52 @@ export function AnalysisResultView({ result }: AnalysisResultViewProps) {
           confidence={result.confidence}
         />
       </div>
+
+      {result.impersonation?.detected && (
+        <Card className="border-red-500/30 bg-red-500/5">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-medium flex items-center gap-2 text-red-600 dark:text-red-400">
+              <Globe className="w-4 h-4" />
+              Domain Impersonation Detected
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm" data-testid="impersonation-brand">
+              This sender appears to impersonate <span className="font-semibold">{result.impersonation.impersonatedBrand}</span>
+            </p>
+            <p className="text-xs text-muted-foreground mt-1" data-testid="impersonation-method">
+              Detection method: {
+                result.impersonation.method === "typosquatting" ? "Typosquatting (Levenshtein distance)" :
+                result.impersonation.method === "homoglyph" ? "Look-alike characters (homoglyph)" :
+                result.impersonation.method === "brand-in-subdomain" ? "Brand name in fake domain" :
+                result.impersonation.method === "keyword-match" ? "Brand keyword in domain" :
+                result.impersonation.method
+              }
+            </p>
+          </CardContent>
+        </Card>
+      )}
+
+      {result.timeAnomaly && result.timeAnomaly.anomalyType && (
+        <Card className="border-orange-500/30 bg-orange-500/5">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-medium flex items-center gap-2 text-orange-600 dark:text-orange-400">
+              <Clock className="w-4 h-4" />
+              Unusual Send Time
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm" data-testid="time-anomaly-info">
+              Sent on {result.timeAnomaly.sendDay} at {result.timeAnomaly.sendHour}:00 UTC
+            </p>
+            <p className="text-xs text-muted-foreground mt-1">
+              {result.timeAnomaly.anomalyType === "weekend-night"
+                ? "Weekend late-night emails are a common phishing pattern"
+                : "Emails sent during unusual hours may indicate automated phishing campaigns"}
+            </p>
+          </CardContent>
+        </Card>
+      )}
 
       {result.headerAnalysis?.headersParsed && (
         <Card>

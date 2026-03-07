@@ -224,6 +224,15 @@
 }
 .phg-toggle-btn:hover { color: #0f172a; }
 
+.phg-alert-red {
+  background: rgba(239, 68, 68, 0.06);
+  border-left: 3px solid #ef4444;
+}
+.phg-alert-orange {
+  background: rgba(249, 115, 22, 0.06);
+  border-left: 3px solid #f97316;
+}
+
 .phg-tfidf-tags {
   display: flex;
   flex-wrap: wrap;

@@ -112,6 +112,37 @@ function scoreClass(score) {
   return 'low';
 }
 
+function renderImpersonation(result) {
+  if (!result.impersonation || !result.impersonation.detected) return '';
+  const imp = result.impersonation;
+  const methodLabel = {
+    'typosquatting': 'Typosquatting (Levenshtein distance)',
+    'homoglyph': 'Look-alike characters (homoglyph)',
+    'brand-in-subdomain': 'Brand name in fake domain',
+    'keyword-match': 'Brand keyword in domain',
+  }[imp.method] || imp.method;
+
+  return `
+    <div class="phg-section phg-alert-red">
+      <h3 style="color:#ef4444;">Domain Impersonation Detected</h3>
+      <p style="font-size:13px;">This sender appears to impersonate <strong>${escapeHtml(imp.impersonatedBrand)}</strong></p>
+      <p style="font-size:11px;color:#94a3b8;margin-top:4px;">Detection: ${escapeHtml(methodLabel)}</p>
+    </div>
+  `;
+}
+
+function renderTimeAnomaly(result) {
+  if (!result.timeAnomaly || !result.timeAnomaly.anomalyType) return '';
+  const ta = result.timeAnomaly;
+  return `
+    <div class="phg-section phg-alert-orange">
+      <h3 style="color:#f97316;">Unusual Send Time</h3>
+      <p style="font-size:13px;">Sent on ${escapeHtml(ta.sendDay || '')} at ${ta.sendHour}:00 UTC</p>
+      <p style="font-size:11px;color:#94a3b8;margin-top:4px;">${ta.anomalyType === 'weekend-night' ? 'Weekend late-night emails are a common phishing pattern' : 'Unusual send times may indicate automated phishing campaigns'}</p>
+    </div>
+  `;
+}
+
 function renderTfidf(result) {
   if (!result.tfidfAnalysis || !result.tfidfAnalysis.totalTermsMatched) return '';
   const ta = result.tfidfAnalysis;
@@ -182,6 +213,10 @@ function renderResult(result) {
         </div>
       </div>
     </div>
+
+    ${renderImpersonation(result)}
+
+    ${renderTimeAnomaly(result)}
 
     ${authSection}
 

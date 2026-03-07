@@ -30,6 +30,18 @@ export interface TfidfDetail {
   totalTermsMatched: number;
 }
 
+export interface ImpersonationDetail {
+  detected: boolean;
+  impersonatedBrand: string;
+  method: string;
+}
+
+export interface TimeAnomalyDetail {
+  sendHour: number | null;
+  sendDay: string | null;
+  anomalyType: string;
+}
+
 export interface AnalysisResult {
   riskScore: number;
   verdict: string;
@@ -45,4 +57,6 @@ export interface AnalysisResult {
     headersParsed: boolean;
   };
   tfidfAnalysis?: TfidfDetail;
+  impersonation?: ImpersonationDetail;
+  timeAnomaly?: TimeAnomalyDetail;
 }

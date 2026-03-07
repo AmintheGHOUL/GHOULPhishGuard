@@ -3,6 +3,8 @@ import { extractFirstHttpLink, findDomainMismatch } from "./reputation";
 import { safeUrl, getDomainFromEmail, getBaseDomain } from "./domains";
 import { parseEmailHeaders, headerAuthFindings, hasRealAuthHeaders } from "./headerParser";
 import { classifyWithTfidf } from "./tfidfClassifier";
+import { detectDomainImpersonation } from "./domainImpersonation";
+import { detectTimeAnomaly, extractDateFromHeaders } from "./timeAnomaly";
 import type { EmailInput, AnalysisResult } from "@shared/schema";
 
 function detectSuspiciousAttachments(attachments: Array<{ filename: string }> = []) {
@@ -123,6 +125,38 @@ export async function analyzeEmail(email: EmailInput): Promise<AnalysisResult> {
     senderDomain: senderBaseDomain || "unknown",
   };
 
+  const senderFullDomain = getDomainFromEmail(fromEmail);
+  const impersonationCheck = detectDomainImpersonation(senderFullDomain);
+  let impersonation: AnalysisResult["impersonation"] = undefined;
+  if (impersonationCheck.detected) {
+    score += impersonationCheck.score;
+    reasons.push(...impersonationCheck.findings);
+    Object.assign(technicalDetails, impersonationCheck.technical);
+    impersonation = {
+      detected: true,
+      impersonatedBrand: impersonationCheck.impersonatedBrand,
+      method: impersonationCheck.method,
+    };
+  }
+
+  let timeAnomaly: AnalysisResult["timeAnomaly"] = undefined;
+  const dateHeader = rawHeaders ? extractDateFromHeaders(rawHeaders) : "";
+  if (dateHeader) {
+    const timeCheck = detectTimeAnomaly(dateHeader);
+    if (timeCheck.score > 0) {
+      score += timeCheck.score;
+      reasons.push(...timeCheck.findings);
+    }
+    if (timeCheck.sendHour !== null) {
+      timeAnomaly = {
+        sendHour: timeCheck.sendHour,
+        sendDay: timeCheck.sendDay,
+        anomalyType: timeCheck.anomalyType,
+      };
+      technicalDetails.sendTime = `${timeCheck.sendDay} ${timeCheck.sendHour}:00 UTC`;
+    }
+  }
+
   const contentAnalysis = analyzeContent(bodyText, subject);
   score += contentAnalysis.score;
   reasons.push(...contentAnalysis.findings);
@@ -207,5 +241,7 @@ export async function analyzeEmail(email: EmailInput): Promise<AnalysisResult> {
     technicalDetails,
     headerAnalysis,
     tfidfAnalysis,
+    impersonation,
+    timeAnomaly,
   };
 }

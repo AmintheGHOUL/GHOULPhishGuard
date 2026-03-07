@@ -1,0 +1,219 @@
+1. Domain Impersonation Detection
+
+Security systems check whether the sender domain imitates a legitimate brand.
+
+Example:
+
+support@microsoft-security-alert.com
+
+Real domain should be:
+
+microsoft.com
+
+Detection methods:
+
+Levenshtein distance (typosquatting detection)
+
+look-alike characters (PaypaI vs PayPal)
+
+newly registered domains
+
+💡 Your extension can:
+
+extract the sender domain
+
+compare it to known brand domains.
+
+2. URL Mismatch Detection
+
+Systems compare the visible link text with the actual destination URL.
+
+Example:
+
+Displayed text: https://paypal.com
+Actual link: https://paypal-login-check.ru
+
+Large email filters flag this immediately.
+
+Your extension should:
+
+extract anchor text
+
+compare it with the hyperlink target.
+
+3. Authentication Failures
+
+Modern email security checks:
+
+SPF
+
+DKIM
+
+DMARC
+
+Example header:
+
+spf=fail
+dkim=none
+dmarc=fail
+
+A combination of failures strongly indicates spoofing.
+
+This is why services like MXToolbox are useful for your extension.
+
+4. Link Reputation Analysis
+
+Before allowing users to click links, email security tools check them against threat databases.
+
+Common intelligence sources:
+
+VirusTotal
+
+AbuseIPDB
+
+Cisco Talos Intelligence Group
+
+Signals checked:
+
+malicious domain history
+
+malware hosting
+
+phishing reports
+
+domain age
+
+5. Attachment Sandboxing
+
+Email security systems automatically detonate attachments in a sandbox.
+
+Example suspicious files:
+
+.docm
+
+.zip
+
+.iso
+
+.html
+
+.exe
+
+Example flow:
+
+Email attachment
+      ↓
+sandbox environment
+      ↓
+behavior analysis
+      ↓
+malicious / safe classification
+
+Your extension could flag risky attachments without executing them.
+
+6. Behavioral AI Models
+
+Large providers use machine learning models trained on billions of emails.
+
+Models analyze:
+
+email structure
+
+wording patterns
+
+historical campaigns
+
+sender behavior
+
+Example signals:
+
+- unusual sender behavior
+- abnormal sending volume
+- rare language patterns
+7. Natural Language Processing (NLP)
+
+Phishing detection models analyze social engineering language.
+
+Common signals:
+
+Urgency
+
+"verify immediately"
+"your account will be closed"
+
+Fear
+
+"security breach detected"
+
+Reward bait
+
+"you won a prize"
+
+Your extension’s content analysis module should include this.
+
+8. Conversation Context Analysis
+
+Advanced systems analyze email thread history.
+
+Example:
+
+CEO suddenly asks for urgent payment
+
+But:
+
+CEO has never emailed the employee before
+
+email tone differs from normal writing style
+
+These anomalies trigger alerts.
+
+9. Infrastructure Reputation
+
+Email security platforms analyze sender infrastructure.
+
+They check:
+
+sending IP reputation
+
+ASN ownership
+
+hosting provider
+
+geolocation
+
+Example suspicious infrastructure:
+
+Email claims to be Microsoft
+Sent from random VPS in Eastern Europe
+
+Your extension could detect this via AbuseIPDB.
+
+10. Time-of-Day Anomaly Detection
+
+Some security systems analyze when emails are sent.
+
+Example:
+
+CEO email at 3:00 AM requesting urgent wire transfer
+
+This abnormal timing can trigger phishing alerts.
+
+The Detection Model Used by Modern Email Security
+
+Most systems combine multiple signals into a final risk score.
+
+Example scoring model:
+
+Domain impersonation = +30
+SPF failure = +25
+Malicious URL = +35
+Urgency language = +10
+Suspicious attachment = +20
+
+Final classification:
+
+0-30  → Safe
+31-60 → Suspicious
+61-100 → Likely phishing
+
+This type of explainable scoring model is perfect for your browser extension.
