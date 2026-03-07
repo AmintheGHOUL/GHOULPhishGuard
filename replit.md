@@ -9,6 +9,26 @@ The app includes educational pages: a usage guide (how to extract email headers)
 - **Backend:** Express.js API running on Replit
 - **Frontend:** React multi-page app with wouter routing
 - **No database** - stateless analysis, results are not persisted
+- **No third-party API calls** - all analysis runs locally in-process
+
+## Security
+- **Helmet** security headers (CSP, X-Frame-Options, MIME sniffing, etc.)
+- **Rate limiting** on analysis endpoint (20 req/min per IP via express-rate-limit)
+- **Input validation** with Zod schemas + field-level max lengths
+- **Request body size limit** (500kb)
+- **CORS** restricted when ALLOWED_ORIGINS env var is set (comma-separated)
+- **LOCAL_ONLY mode** when LOCAL_ONLY=true env var is set (restricts API to localhost)
+- **No user content in logs** - only method/path/status/duration logged
+- **No data retention** - input → analysis → result → discard
+- **Content sanitization** on rendered output via sanitizePlain utility
+- **No dangerouslySetInnerHTML** in application code
+- **No URL fetching** - no SSRF risk (analysis is purely text-based)
+- **Risk disclaimer** shown on analyzer page
+
+## Environment Variables
+- `LOCAL_ONLY` - Set to "true" to restrict API to localhost connections only
+- `ALLOWED_ORIGINS` - Comma-separated list of allowed CORS origins (e.g., "https://example.com,https://app.example.com")
+- `SESSION_SECRET` - Session secret (available in secrets)
 
 ## Key Features
 - Domain impersonation detection (Levenshtein distance typosquatting + homoglyph look-alike characters)
@@ -34,18 +54,21 @@ The app includes educational pages: a usage guide (how to extract email headers)
 ```
 client/src/
   App.tsx                  - Navigation layout with wouter routing (4 pages)
+  lib/
+    sanitize.ts            - Content sanitization utility (sanitizePlain)
   components/
     theme-provider.tsx     - Dark/light theme context
     risk-gauge.tsx         - Visual risk score display
     analysis-result.tsx    - Full result view with impersonation/time/auth/TF-IDF cards
   pages/
-    dashboard.tsx          - Email analyzer form + results
+    dashboard.tsx          - Email analyzer form + results + disclaimer
     how-to-use.tsx         - Instructions for getting email data/headers
     awareness.tsx          - Phishing awareness guide
     techniques.tsx         - Detection techniques explained
 
 server/
-  routes.ts                - POST /api/analyze-email, GET /api/health
+  index.ts                 - Express setup, sanitized logging (metadata only)
+  routes.ts                - POST /api/analyze-email, GET /api/health, helmet, rate limiting, CORS, local-only guard
   services/
     analyzeEmail.ts        - Main analysis orchestrator
     domainImpersonation.ts - Levenshtein + homoglyph + brand detection
@@ -57,11 +80,11 @@ server/
     domains.ts             - URL/domain utility functions
 
 shared/
-  schema.ts                - EmailInput schema, AnalysisResult + all detail types
+  schema.ts                - EmailInput schema (with field-level size limits), AnalysisResult types
 ```
 
 ## API Endpoints
-- `POST /api/analyze-email` - Full analysis with all detection modules
+- `POST /api/analyze-email` - Full analysis with all detection modules (rate-limited, local-only guard)
 - `GET /api/health` - Health check
 
 ## Theme

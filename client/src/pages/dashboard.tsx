@@ -320,6 +320,15 @@ export default function Dashboard() {
           <AnalysisResultView result={analyzeMutation.data} />
         </>
       )}
+
+      <Card className="border-muted bg-muted/30">
+        <CardContent className="pt-4">
+          <p className="text-xs text-muted-foreground text-center" data-testid="text-disclaimer">
+            This tool provides automated analysis and cannot guarantee that an email is safe or malicious.
+            Always exercise caution with suspicious emails. Your email content is analyzed in memory and never stored.
+          </p>
+        </CardContent>
+      </Card>
     </div>
   );
 }

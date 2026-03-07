@@ -20,9 +20,8 @@ function isLocalOnly(): boolean {
 function localOnlyGuard(req: Request, res: Response, next: NextFunction) {
   if (!isLocalOnly()) return next();
 
-  const forwarded = req.headers["x-forwarded-for"];
-  const ip = typeof forwarded === "string" ? forwarded.split(",")[0].trim() : req.socket.remoteAddress || "";
-  const local = ["127.0.0.1", "::1", "::ffff:127.0.0.1", "localhost"];
+  const ip = req.socket.remoteAddress || "";
+  const local = ["127.0.0.1", "::1", "::ffff:127.0.0.1"];
 
   if (local.includes(ip)) {
     return next();
@@ -52,10 +51,19 @@ export async function registerRoutes(
   );
 
   app.use("/api", (req: Request, res: Response, next: NextFunction) => {
-    const allowedOrigin = process.env.ALLOWED_ORIGIN || req.headers.origin || "";
-    if (allowedOrigin) {
-      res.header("Access-Control-Allow-Origin", allowedOrigin);
+    const origin = req.headers.origin || "";
+    const allowedOrigins = process.env.ALLOWED_ORIGINS
+      ? process.env.ALLOWED_ORIGINS.split(",").map((o) => o.trim())
+      : [];
+
+    if (allowedOrigins.length > 0) {
+      if (allowedOrigins.includes(origin)) {
+        res.header("Access-Control-Allow-Origin", origin);
+      }
+    } else {
+      res.header("Access-Control-Allow-Origin", origin || "*");
     }
+
     res.header("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
     res.header("Access-Control-Allow-Headers", "Content-Type");
     res.header("Access-Control-Allow-Credentials", "true");
