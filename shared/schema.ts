@@ -1,20 +1,20 @@
 import { z } from "zod";
 
 export const emailInputSchema = z.object({
-  fromEmail: z.string().default(""),
-  subject: z.string().default(""),
-  bodyText: z.string().default(""),
-  replyTo: z.string().default(""),
-  returnPath: z.string().default(""),
-  rawHeaders: z.string().default(""),
+  fromEmail: z.string().max(320).default(""),
+  subject: z.string().max(1000).default(""),
+  bodyText: z.string().max(100000).default(""),
+  replyTo: z.string().max(320).default(""),
+  returnPath: z.string().max(320).default(""),
+  rawHeaders: z.string().max(200000).default(""),
   links: z.array(z.object({
-    text: z.string().default(""),
-    href: z.string().default(""),
-  })).default([]),
+    text: z.string().max(2000).default(""),
+    href: z.string().max(2000).default(""),
+  })).max(50).default([]),
   attachments: z.array(z.object({
-    filename: z.string().default(""),
-  })).default([]),
-  observedBrandDomains: z.array(z.string()).default([]),
+    filename: z.string().max(500).default(""),
+  })).max(50).default([]),
+  observedBrandDomains: z.array(z.string().max(253)).max(100).default([]),
 });
 
 export type EmailInput = z.infer<typeof emailInputSchema>;

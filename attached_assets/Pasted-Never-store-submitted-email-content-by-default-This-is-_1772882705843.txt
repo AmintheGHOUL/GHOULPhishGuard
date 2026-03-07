@@ -1,0 +1,417 @@
+Never store submitted email content by default
+
+This is one of the biggest protections.
+
+Your site should:
+
+analyze the input
+
+return the result
+
+discard it immediately
+
+Do not save:
+
+raw email body
+
+pasted headers
+
+user addresses
+
+attachment names tied to a person
+
+If you need logs, keep only:
+
+timestamp
+
+risk score
+
+feature counts
+
+anonymous error info
+
+Not the actual content.
+
+3. Make third-party lookups indicator-only
+
+If you use VirusTotal, AbuseIPDB, MXToolbox, only send:
+
+domain
+
+URL
+
+IP
+
+hash
+
+Do not send:
+
+entire email text
+
+full header dump unless truly needed
+
+personal message content
+
+For example:
+
+safe: verify-user-security.com
+
+unsafe: whole email body containing names, addresses, invoices, conversations
+
+4. Put a strong privacy boundary in the UI
+
+Tell users clearly:
+
+pasted content is analyzed temporarily
+
+full message content is not retained
+
+only extracted indicators may be checked against external reputation services
+
+This matters because people may paste:
+
+work emails
+
+university messages
+
+payroll requests
+
+legal or medical content
+
+5. Separate local analysis from reputation lookups
+
+Your backend should first do:
+
+keyword/urgency analysis
+
+link extraction
+
+domain extraction
+
+mismatch detection
+
+attachment-extension checks
+
+Only then call external services for:
+
+domain/IP/URL reputation
+
+That way most processing happens internally.
+
+6. Protect your backend like a real application
+
+Since it’s a website, secure the server properly.
+
+You should have:
+
+HTTPS only
+
+secure headers
+
+rate limiting
+
+input size limits
+
+request timeout limits
+
+CSRF protection if you have forms/session state
+
+authentication for any admin page
+
+Minimum headers:
+
+Content-Security-Policy
+
+X-Content-Type-Options: nosniff
+
+Referrer-Policy
+
+Strict-Transport-Security
+
+X-Frame-Options or CSP frame restriction
+
+7. Sanitize all pasted content before rendering
+
+This is critical.
+
+If a user pastes HTML email content and you render it unsafely, your site could get XSS.
+
+Never render pasted email with raw innerHTML.
+
+Use:
+
+plain text rendering
+
+sanitization libraries if HTML is unavoidable
+
+Treat all submitted email content as untrusted attacker-controlled input.
+
+8. Do not fetch user-submitted links directly from the browser
+
+If the user submits a suspicious URL, do not auto-open it, preview it, or embed it.
+
+Bad:
+
+iframe preview
+
+auto-fetching the page client-side
+
+screenshotting unknown URLs without isolation
+
+Better:
+
+extract the domain as text
+
+query reputation sources server-side
+
+show a warning only
+
+9. Prevent SSRF if your backend analyzes URLs
+
+If your server fetches URLs to inspect them, you must block:
+
+localhost
+
+internal IP ranges
+
+cloud metadata endpoints
+
+file/protocol abuse
+
+Otherwise attackers can use your app for SSRF.
+
+Block at least:
+
+127.0.0.1
+
+localhost
+
+10.0.0.0/8
+
+172.16.0.0/12
+
+192.168.0.0/16
+
+link-local and metadata addresses
+
+10. Add strict input validation
+
+Validate:
+
+email addresses
+
+URLs
+
+IP addresses
+
+headers
+
+attachment names
+
+Reject oversized input and malformed data.
+
+Examples:
+
+max body length
+
+max number of URLs
+
+max header size
+
+This helps against abuse and denial-of-service attempts.
+
+11. Protect API keys on the server only
+
+Never expose VirusTotal, AbuseIPDB, or MXToolbox keys in frontend JavaScript.
+
+The frontend should call your backend.
+Your backend should call the external APIs.
+
+If the key appears in browser DevTools, that is a problem.
+
+12. Add abuse protection
+
+Your site can be abused by bots or attackers.
+
+Use:
+
+per-IP rate limiting
+
+request quotas
+
+CAPTCHA only if needed
+
+abuse monitoring
+
+backend throttling for expensive lookups
+
+Especially important if one user can burn your VirusTotal quota.
+
+13. Build a “sensitive data mode”
+
+This is a very good feature for trust.
+
+Example:
+
+Private mode enabled
+
+no third-party lookups
+
+local heuristics only
+
+no retention
+
+Then users can safely analyze sensitive business emails without sending indicators outside your system.
+
+14. Be careful with AI/NLP processing
+
+If you use an LLM API to analyze content, that is a major privacy issue unless users explicitly know.
+
+Safer choices:
+
+local rules
+
+local ML model
+
+backend-hosted traditional NLP
+
+If you do use an external AI API, make it opt-in and clearly disclosed.
+
+15. Avoid account creation unless necessary
+
+If your site does not need accounts, do not add them.
+
+Accounts create extra risk:
+
+password storage
+
+session hijacking
+
+user-email linkage
+
+data retention obligations
+
+For an MVP, anonymous analysis is safer.
+
+16. Secure the admin side
+
+If you have admin dashboards, analytics, logs, or stored reports:
+
+require authentication
+
+use MFA
+
+separate admin routes
+
+restrict by role
+
+never expose raw submitted email content in logs
+
+17. Safe logging only
+
+Your logs should not contain:
+
+pasted email body
+
+full URLs with tokens
+
+personal email addresses
+
+headers containing sensitive routing info
+
+Instead log:
+
+request ID
+
+processing status
+
+score
+
+category matches
+
+service failure counts
+
+18. Explain uncertainty
+
+Do not tell users “safe” too strongly.
+
+Safer wording:
+
+Low risk
+
+Suspicious
+
+High risk
+
+Likely phishing
+
+And add:
+
+“No automated tool can guarantee an email is safe.”
+
+That protects users from overtrusting the product.
+
+19. Add user safety guidance
+
+Since this is for non-technical people, your site should say what to do next:
+
+do not click links
+
+verify with the sender through official channels
+
+do not send passwords or MFA codes
+
+contact IT/security if this is a work account
+
+That’s part of protecting users too.
+
+20. Best architecture for your web app
+
+The safest design is:
+
+Browser
+  ↓
+Frontend form
+  ↓
+Backend analyzer
+  ├─ local rule engine
+  ├─ local content analysis
+  ├─ URL/domain extraction
+  └─ optional reputation lookups
+  ↓
+Plain-English explanation
+  ↓
+Discard raw submission
+Biggest risks for your web-page version
+
+The top 5 are:
+
+storing pasted private emails
+
+leaking content to third-party APIs
+
+XSS from rendered email HTML
+
+exposed API keys in frontend code
+
+server-side URL fetching abuse
+
+Best immediate checklist
+
+Do these first:
+
+stop storing raw submissions
+
+sanitize all rendered content
+
+move all API keys to backend
+
+add HTTPS and security headers
+
+send only URLs/domains/IPs to third parties
+
+add rate limiting
+
+add a private/local-only mode
+
+remove any debug logs that print pasted content

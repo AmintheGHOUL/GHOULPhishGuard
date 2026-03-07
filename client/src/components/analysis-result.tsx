@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
+import { sanitizePlain } from "@/lib/sanitize";
 
 interface AnalysisResultViewProps {
   result: AnalysisResult;
@@ -65,7 +66,7 @@ export function AnalysisResultView({ result }: AnalysisResultViewProps) {
           </CardHeader>
           <CardContent>
             <p className="text-sm" data-testid="impersonation-brand">
-              This sender appears to impersonate <span className="font-semibold">{result.impersonation.impersonatedBrand}</span>
+              This sender appears to impersonate <span className="font-semibold">{sanitizePlain(result.impersonation.impersonatedBrand)}</span>
             </p>
             <p className="text-xs text-muted-foreground mt-1" data-testid="impersonation-method">
               Detection method: {
