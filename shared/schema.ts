@@ -60,6 +60,31 @@ export interface TimeAnomalyDetail {
   anomalyType: string;
 }
 
+export interface UrlReputationDetail {
+  domainAge: number | null;
+  domainCreationDate: string | null;
+  ageRiskScore: number;
+  tldRiskScore: number;
+  hostingRiskScore: number;
+  totalScore: number;
+  findings: string[];
+  technical: Record<string, string>;
+}
+
+export interface ThreatSignalDetail {
+  type: string;
+  severity: "high" | "medium" | "low";
+  description: string;
+}
+
+export interface ThreatIntelDetail {
+  score: number;
+  findings: string[];
+  signals: ThreatSignalDetail[];
+  domainEntropy: number;
+  matchedIndicators: string[];
+}
+
 export interface AnalysisResult {
   riskScore: number;
   verdict: string;
@@ -79,4 +104,6 @@ export interface AnalysisResult {
   bertAnalysis?: BertDetail;
   impersonation?: ImpersonationDetail;
   timeAnomaly?: TimeAnomalyDetail;
+  urlReputation?: UrlReputationDetail;
+  threatIntel?: ThreatIntelDetail;
 }

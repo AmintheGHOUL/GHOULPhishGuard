@@ -19,6 +19,10 @@ import {
   Clock,
   Zap,
   Layers,
+  Search,
+  Database,
+  Calendar,
+  Server,
 } from "lucide-react";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
@@ -126,6 +130,139 @@ export function AnalysisResultView({ result }: AnalysisResultViewProps) {
                 ? "Weekend late-night emails are a common phishing pattern"
                 : "Emails sent during unusual hours may indicate automated phishing campaigns"}
             </p>
+          </CardContent>
+        </Card>
+      )}
+
+      {result.urlReputation && result.urlReputation.totalScore > 0 && (
+        <Card className="border-amber-500/30 bg-amber-500/5">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-medium flex items-center gap-2 text-amber-600 dark:text-amber-400">
+              <Search className="w-4 h-4" />
+              URL Reputation Analysis
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              <div className="flex items-center gap-4 flex-wrap">
+                <div className="flex items-center gap-1.5 text-xs" data-testid="url-rep-score">
+                  <span className="text-muted-foreground">Risk Score:</span>
+                  <span className={cn(
+                    "font-semibold",
+                    result.urlReputation.totalScore >= 15 ? "text-red-500" :
+                    result.urlReputation.totalScore >= 8 ? "text-orange-500" : "text-amber-500"
+                  )}>
+                    {result.urlReputation.totalScore}
+                  </span>
+                </div>
+                {result.urlReputation.domainAge !== null && (
+                  <div className="flex items-center gap-1.5 text-xs" data-testid="url-rep-age">
+                    <Calendar className="w-3 h-3 text-muted-foreground" />
+                    <span className="text-muted-foreground">Domain Age:</span>
+                    <span className="font-mono font-medium">
+                      {result.urlReputation.domainAge < 1 ? "< 1 day" :
+                       result.urlReputation.domainAge === 1 ? "1 day" :
+                       `${result.urlReputation.domainAge} days`}
+                    </span>
+                  </div>
+                )}
+                {result.urlReputation.domainCreationDate && (
+                  <div className="flex items-center gap-1.5 text-xs" data-testid="url-rep-created">
+                    <span className="text-muted-foreground">Created:</span>
+                    <span className="font-mono">{new Date(result.urlReputation.domainCreationDate).toLocaleDateString()}</span>
+                  </div>
+                )}
+              </div>
+              {result.urlReputation.findings.length > 0 && (
+                <ul className="space-y-1.5">
+                  {result.urlReputation.findings.map((finding, i) => (
+                    <li key={i} className="flex gap-2 text-xs" data-testid={`url-rep-finding-${i}`}>
+                      <AlertTriangle className="w-3 h-3 text-amber-500 mt-0.5 shrink-0" />
+                      <span>{finding}</span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+              <div className="flex gap-3 flex-wrap">
+                {result.urlReputation.ageRiskScore > 0 && (
+                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-red-500/10 text-red-600 dark:text-red-400" data-testid="url-rep-badge-age">
+                    Age Risk +{result.urlReputation.ageRiskScore}
+                  </span>
+                )}
+                {result.urlReputation.tldRiskScore > 0 && (
+                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-orange-500/10 text-orange-600 dark:text-orange-400" data-testid="url-rep-badge-tld">
+                    TLD Risk +{result.urlReputation.tldRiskScore}
+                  </span>
+                )}
+                {result.urlReputation.hostingRiskScore > 0 && (
+                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-600 dark:text-amber-400" data-testid="url-rep-badge-hosting">
+                    Hosting Risk +{result.urlReputation.hostingRiskScore}
+                  </span>
+                )}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {result.threatIntel && result.threatIntel.score > 0 && (
+        <Card className="border-purple-500/30 bg-purple-500/5">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-medium flex items-center gap-2 text-purple-600 dark:text-purple-400">
+              <Database className="w-4 h-4" />
+              Threat Intelligence
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              <div className="flex items-center gap-4 flex-wrap">
+                <div className="flex items-center gap-1.5 text-xs" data-testid="threat-intel-score">
+                  <span className="text-muted-foreground">Threat Score:</span>
+                  <span className={cn(
+                    "font-semibold",
+                    result.threatIntel.score >= 25 ? "text-red-500" :
+                    result.threatIntel.score >= 10 ? "text-orange-500" : "text-amber-500"
+                  )}>
+                    {result.threatIntel.score}
+                  </span>
+                </div>
+                {result.threatIntel.domainEntropy > 0 && (
+                  <div className="flex items-center gap-1.5 text-xs" data-testid="threat-intel-entropy">
+                    <span className="text-muted-foreground">Domain Entropy:</span>
+                    <span className="font-mono">{result.threatIntel.domainEntropy}</span>
+                  </div>
+                )}
+              </div>
+
+              {result.threatIntel.signals.length > 0 && (
+                <div className="space-y-2">
+                  {result.threatIntel.signals.map((signal, i) => (
+                    <div key={i} className="flex gap-2 items-start text-xs" data-testid={`threat-signal-${i}`}>
+                      <span className={cn(
+                        "shrink-0 mt-0.5 w-1.5 h-1.5 rounded-full",
+                        signal.severity === "high" ? "bg-red-500" :
+                        signal.severity === "medium" ? "bg-orange-500" : "bg-amber-500"
+                      )} />
+                      <span>{signal.description}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {result.threatIntel.matchedIndicators.length > 0 && (
+                <div className="flex flex-wrap gap-1.5">
+                  {result.threatIntel.matchedIndicators.map((indicator, i) => (
+                    <span
+                      key={i}
+                      className="text-[10px] px-1.5 py-0.5 rounded bg-purple-500/10 text-purple-600 dark:text-purple-400 font-mono"
+                      data-testid={`threat-indicator-${i}`}
+                    >
+                      {indicator}
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
           </CardContent>
         </Card>
       )}

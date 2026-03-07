@@ -2,6 +2,7 @@ import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
 import { emailInputSchema } from "@shared/schema";
 import { analyzeEmail } from "./services/analyzeEmail";
+import { isModelLoaded, isModelLoading } from "./services/realBertClassifier";
 import rateLimit from "express-rate-limit";
 import helmet from "helmet";
 
@@ -94,9 +95,40 @@ export async function registerRoutes(
     }
   });
 
+  // GET /api/model-status — exposes BERT model load state for frontend status indicators
+  app.get("/api/model-status", (_req, res) => {
+    const loaded = isModelLoaded();
+    const loading = isModelLoading();
+
+    let status: "loaded" | "loading" | "failed" | "idle";
+    if (loaded) {
+      status = "loaded";
+    } else if (loading) {
+      status = "loading";
+    } else {
+      status = "failed";
+    }
+
+    res.json({
+      model: "distilbert-phishing-v2.4.1",
+      status,
+      ready: loaded,
+    });
+  });
+
   app.get("/api/health", (_req, res) => {
     res.json({ ok: true, service: "ghoulphishguard-backend" });
   });
+
+  // --- Security measures summary ---
+  // 1. Helmet CSP: Restricts script/style/font/img/connect sources (applied above)
+  // 2. Rate limiting: /api/analyze-email limited to 20 req/min per IP
+  // 3. CORS: Origin whitelist via ALLOWED_ORIGINS env var; defaults to open for dev
+  // 4. LOCAL_ONLY guard: When LOCAL_ONLY=true, analysis endpoint rejects non-localhost IPs
+  // 5. Input validation: All POST bodies validated with Zod schemas before processing
+  // 6. Request body size limit: 500kb cap set in server/index.ts
+  // 7. No user content logged: Error handlers avoid logging email content to prevent data leaks
+  // 8. trust proxy: Set to 1 so rate limiter uses correct client IP behind reverse proxy
 
   return httpServer;
 }

@@ -10,7 +10,7 @@ The app includes educational pages: a usage guide (how to extract email headers)
 - **Frontend:** React multi-page app with wouter routing
 - **Real ML Model:** DistilBERT phishing classifier (ONNX INT8 quantized, ~64MB) loaded via @huggingface/transformers
 - **No database** - stateless analysis, results are not persisted
-- **No external API calls** - all analysis runs locally in-process (model downloaded once, cached on disk)
+- **Minimal external calls** - RDAP domain age lookups (free, no API key, 3s timeout) and Google Safe Browsing Transparency API; all ML inference runs locally in-process
 
 ## Security
 - **Helmet** security headers (CSP, X-Frame-Options, MIME sniffing, etc.)
@@ -23,7 +23,7 @@ The app includes educational pages: a usage guide (how to extract email headers)
 - **No data retention** - input → analysis → result → discard
 - **Content sanitization** on rendered output via sanitizePlain utility
 - **No dangerouslySetInnerHTML** in application code
-- **No URL fetching** - no SSRF risk (analysis is purely text-based)
+- **Limited outbound calls** - only to fixed allowlisted hosts (rdap.org for domain age, Google Safe Browsing Transparency API), both with 3-second timeouts and graceful fallback; no user-controlled URL fetching (no SSRF risk)
 - **Risk disclaimer** shown on analyzer page
 
 ## Environment Variables
@@ -46,6 +46,8 @@ The app includes educational pages: a usage guide (how to extract email headers)
 - Attachment risk assessment
 - Domain mismatch detection (reply-to, return-path vs sender)
 - Received chain analysis (hop counting)
+- **URL Reputation** — domain age via RDAP (free), suspicious TLD detection (37+ TLDs), free hosting detection (up to 20 pts)
+- **Threat Intelligence** — domain entropy scoring, phishing pattern database (20+ patterns), URL shortener detection, Google Safe Browsing, homograph attack detection, excessive subdomain detection (up to 25 pts)
 - Plain-English explanations of findings
 - Risk scoring (0-100) with verdicts
 
@@ -85,6 +87,8 @@ server/
     headerParser.ts        - Full email header parsing (SPF/DKIM/DMARC)
     contentRules.ts        - Heuristic pattern matching
     reputation.ts          - Domain mismatch detection
+    urlReputation.ts       - Domain age via RDAP, suspicious TLD/hosting detection
+    threatIntel.ts         - Threat intelligence (entropy, phishing patterns, Safe Browsing, homographs)
     domains.ts             - URL/domain utility functions
 
 shared/
@@ -93,6 +97,7 @@ shared/
 
 ## API Endpoints
 - `POST /api/analyze-email` - Full analysis with all detection modules (rate-limited, local-only guard)
+- `GET /api/model-status` - DistilBERT model load status (loaded/loading/failed)
 - `GET /api/health` - Health check
 
 ## Theme

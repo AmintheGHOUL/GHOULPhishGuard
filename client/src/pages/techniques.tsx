@@ -15,6 +15,8 @@ import {
   BarChart3,
   Zap,
   Layers,
+  Search,
+  Database,
 } from "lucide-react";
 
 export default function Techniques() {
@@ -395,6 +397,86 @@ export default function Techniques() {
               Phishing campaigns are often automated and can fire at unusual hours. We analyze the email's Date header to flag emails sent during suspicious times, particularly late-night weekend hours, which are common for automated phishing.
             </p>
             <p className="text-xs text-muted-foreground font-medium">Contribution: 8-10 points</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base font-semibold flex items-center gap-2">
+              <Search className="w-5 h-5 text-primary" />
+              11. URL Reputation & Domain Age
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <p className="text-sm text-muted-foreground leading-relaxed">
+              Newly registered domains are a strong phishing indicator. Attackers frequently register domains just hours before a campaign and discard them afterwards. GHOULPhishGuard queries RDAP (Registration Data Access Protocol) to determine when a domain was created.
+            </p>
+            <div className="bg-muted rounded-md p-3">
+              <p className="text-xs font-mono text-muted-foreground mb-2">Domain age scoring:</p>
+              <ul className="text-xs text-muted-foreground space-y-1">
+                <li><span className="font-medium text-red-500">&lt; 7 days</span> — extremely suspicious (+15 points)</li>
+                <li><span className="font-medium text-orange-500">&lt; 30 days</span> — very recently created (+10 points)</li>
+                <li><span className="font-medium text-amber-500">&lt; 90 days</span> — relatively new (+5 points)</li>
+              </ul>
+            </div>
+            <div className="bg-muted rounded-md p-3">
+              <p className="text-xs font-medium mb-1">Additional Checks</p>
+              <ul className="text-xs text-muted-foreground space-y-1">
+                <li><span className="font-medium text-foreground">Suspicious TLDs</span> — flags 37+ high-risk TLDs (.tk, .ml, .xyz, .top, etc.) commonly abused by phishing campaigns (+8 points)</li>
+                <li><span className="font-medium text-foreground">Free Hosting Detection</span> — identifies domains on free hosting platforms (Heroku, Netlify, ngrok, etc.) that are commonly used for throwaway phishing sites (+6 points)</li>
+              </ul>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              RDAP lookups use a 3-second timeout. If the lookup fails or is unavailable, the analysis continues without domain age data — no external dependency is required.
+            </p>
+            <p className="text-xs text-muted-foreground font-medium">Contribution: up to 20 points</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base font-semibold flex items-center gap-2">
+              <Database className="w-5 h-5 text-primary" />
+              12. Threat Intelligence Enrichment
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <p className="text-sm text-muted-foreground leading-relaxed">
+              GHOULPhishGuard cross-references domains and URLs against multiple threat intelligence sources to identify known phishing infrastructure.
+            </p>
+            <div className="space-y-3">
+              <div className="bg-muted rounded-md p-3">
+                <p className="text-xs font-medium mb-1">Domain Entropy Scoring</p>
+                <p className="text-xs text-muted-foreground">
+                  Calculates Shannon entropy to detect randomly generated domain names. Phishing domains often use random character strings (e.g., "xk4j9f2m.xyz") that have high entropy scores. Domains with entropy above 3.5 and length above 10 characters are flagged as suspicious.
+                </p>
+                <p className="text-xs font-mono text-muted-foreground mt-2">
+                  H = -&#x2211; p(x) log&#x2082; p(x)
+                </p>
+              </div>
+              <div className="bg-muted rounded-md p-3">
+                <p className="text-xs font-medium mb-1">Phishing Pattern Database</p>
+                <p className="text-xs text-muted-foreground">
+                  Matches domains against 20+ known phishing naming patterns including "secure-login," "account-verify," "reset-password," and brand+action combinations (e.g., "paypal-login," "microsoft-verify").
+                </p>
+              </div>
+              <div className="bg-muted rounded-md p-3">
+                <p className="text-xs font-medium mb-1">URL Shortener Detection</p>
+                <p className="text-xs text-muted-foreground">
+                  Identifies 20+ URL shortener services (bit.ly, tinyurl.com, t.co, etc.) that are often used to mask the real destination of phishing links.
+                </p>
+              </div>
+              <div className="bg-muted rounded-md p-3">
+                <p className="text-xs font-medium mb-1">Advanced Indicators</p>
+                <ul className="text-xs text-muted-foreground space-y-1 mt-1">
+                  <li><span className="font-medium text-foreground">Excessive subdomains</span> — more than 4 subdomain levels (e.g., secure.login.paypal.verify.evil.com)</li>
+                  <li><span className="font-medium text-foreground">Raw IP addresses</span> — links pointing to IP addresses instead of domain names</li>
+                  <li><span className="font-medium text-foreground">Homograph attacks</span> — non-ASCII characters that mimic standard Latin letters (IDN abuse)</li>
+                  <li><span className="font-medium text-foreground">Google Safe Browsing</span> — queries the Transparency API for known dangerous sites</li>
+                </ul>
+              </div>
+            </div>
+            <p className="text-xs text-muted-foreground font-medium">Contribution: up to 25 points</p>
           </CardContent>
         </Card>
       </div>

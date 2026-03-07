@@ -8,6 +8,8 @@ import { classifyWithBert } from "./bertClassifier";
 import { classifyWithRealBert } from "./realBertClassifier";
 import { detectDomainImpersonation } from "./domainImpersonation";
 import { detectTimeAnomaly, extractDateFromHeaders } from "./timeAnomaly";
+import { checkUrlReputation } from "./urlReputation";
+import { analyzeThreatIntel } from "./threatIntel";
 import type { EmailInput, AnalysisResult } from "@shared/schema";
 
 function detectSuspiciousAttachments(attachments: Array<{ filename: string }> = []) {
@@ -319,6 +321,60 @@ export async function analyzeEmail(email: EmailInput): Promise<AnalysisResult> {
     }
   }
 
+  const allDomains: string[] = [];
+  const allUrls: string[] = [];
+
+  if (senderBaseDomain) allDomains.push(senderBaseDomain);
+  for (const link of links) {
+    const parsed = safeUrl(link.href);
+    if (parsed) {
+      allDomains.push(getBaseDomain(parsed.hostname));
+      allUrls.push(link.href);
+    }
+  }
+
+  let urlReputation: AnalysisResult["urlReputation"] = undefined;
+  let threatIntel: AnalysisResult["threatIntel"] = undefined;
+
+  const uniqueDomains = Array.from(new Set(allDomains.filter(Boolean)));
+
+  const [urlRepResults, threatIntelResult] = await Promise.all([
+    Promise.all(uniqueDomains.slice(0, 3).map((d) => checkUrlReputation(d))),
+    analyzeThreatIntel(uniqueDomains, allUrls),
+  ]);
+
+  let bestUrlRep = urlRepResults[0] || null;
+  for (const rep of urlRepResults) {
+    if (rep.totalScore > (bestUrlRep?.totalScore || 0)) {
+      bestUrlRep = rep;
+    }
+  }
+
+  if (bestUrlRep && bestUrlRep.totalScore > 0) {
+    const urlRepContribution = Math.min(bestUrlRep.totalScore, 20);
+    score += urlRepContribution;
+    reasons.push(...bestUrlRep.findings);
+    Object.assign(technicalDetails, bestUrlRep.technical);
+    urlReputation = bestUrlRep;
+    technicalDetails.urlReputationScore = String(bestUrlRep.totalScore);
+  } else if (bestUrlRep) {
+    urlReputation = bestUrlRep;
+  }
+
+  if (threatIntelResult.score > 0) {
+    const threatContribution = Math.min(threatIntelResult.score, 25);
+    score += threatContribution;
+    reasons.push(...threatIntelResult.findings);
+    threatIntel = threatIntelResult;
+    technicalDetails.threatIntelScore = String(threatIntelResult.score);
+    technicalDetails.domainEntropy = String(threatIntelResult.domainEntropy);
+    if (threatIntelResult.matchedIndicators.length > 0) {
+      technicalDetails.threatIndicators = threatIntelResult.matchedIndicators.join(", ");
+    }
+  } else {
+    threatIntel = threatIntelResult;
+  }
+
   score = Math.max(0, Math.min(100, score));
 
   const userActions: string[] = [];
@@ -346,5 +402,7 @@ export async function analyzeEmail(email: EmailInput): Promise<AnalysisResult> {
     bertAnalysis,
     impersonation,
     timeAnomaly,
+    urlReputation,
+    threatIntel,
   };
 }
