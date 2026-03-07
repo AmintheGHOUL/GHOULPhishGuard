@@ -31,8 +31,11 @@ The app includes educational pages: a usage guide (how to extract email headers)
 - `SESSION_SECRET` - Session secret (available in secrets)
 
 ## Key Features
+- **ML Ensemble** — three classifiers combined:
+  - TF-IDF keyword analysis (107 phishing terms + 13 damper terms)
+  - TF-IDF + Linear SVM (150-feature vocabulary + bigram features + pre-trained weights)
+  - BERT deep learning (subword tokenization + self-attention + classification head, model: phishbert-v1-distilled)
 - Domain impersonation detection (Levenshtein distance typosquatting + homoglyph look-alike characters)
-- TF-IDF text mining classifier for phishing language detection
 - Full email header parsing (SPF, DKIM, DMARC verification)
 - Time-of-day anomaly detection (unusual send times)
 - Heuristic-based content analysis (urgency, emotional pressure, sensitive info requests)
@@ -70,9 +73,11 @@ server/
   index.ts                 - Express setup, sanitized logging (metadata only)
   routes.ts                - POST /api/analyze-email, GET /api/health, helmet, rate limiting, CORS, local-only guard
   services/
-    analyzeEmail.ts        - Main analysis orchestrator
+    analyzeEmail.ts        - Main analysis orchestrator (ensemble scoring)
     domainImpersonation.ts - Levenshtein + homoglyph + brand detection
     tfidfClassifier.ts     - TF-IDF text mining classifier
+    svmClassifier.ts       - TF-IDF + Linear SVM with pre-trained weights (150 features + bigrams)
+    bertClassifier.ts      - BERT-inspired classifier (subword tokenization, self-attention, classification head)
     timeAnomaly.ts         - Time-of-day anomaly detection
     headerParser.ts        - Full email header parsing (SPF/DKIM/DMARC)
     contentRules.ts        - Heuristic pattern matching

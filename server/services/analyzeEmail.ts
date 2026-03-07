@@ -3,6 +3,8 @@ import { extractFirstHttpLink, findDomainMismatch } from "./reputation";
 import { safeUrl, getDomainFromEmail, getBaseDomain } from "./domains";
 import { parseEmailHeaders, headerAuthFindings, hasRealAuthHeaders } from "./headerParser";
 import { classifyWithTfidf } from "./tfidfClassifier";
+import { classifyWithSvm } from "./svmClassifier";
+import { classifyWithBert } from "./bertClassifier";
 import { detectDomainImpersonation } from "./domainImpersonation";
 import { detectTimeAnomaly, extractDateFromHeaders } from "./timeAnomaly";
 import type { EmailInput, AnalysisResult } from "@shared/schema";
@@ -72,7 +74,7 @@ function confidenceFromScore(score: number): string {
 }
 
 function dedupe(items: string[]): string[] {
-  return Array.from(new Set(items)).slice(0, 10);
+  return Array.from(new Set(items)).slice(0, 12);
 }
 
 export async function analyzeEmail(email: EmailInput): Promise<AnalysisResult> {
@@ -188,12 +190,12 @@ export async function analyzeEmail(email: EmailInput): Promise<AnalysisResult> {
   Object.assign(technicalDetails, linkAnalysis.technical);
 
   const fullText = `${subject} ${bodyText}`;
-  const tfidfResult = classifyWithTfidf(fullText);
 
+  const tfidfResult = classifyWithTfidf(fullText);
   let tfidfAnalysis: AnalysisResult["tfidfAnalysis"] = undefined;
 
   if (tfidfResult.totalTermsMatched > 0) {
-    const tfidfContribution = Math.round(tfidfResult.phishingScore * 0.35);
+    const tfidfContribution = Math.round(tfidfResult.phishingScore * 0.20);
     score += tfidfContribution;
 
     if (tfidfResult.phishingScore >= 40 && tfidfResult.topTerms.length > 0) {
@@ -216,6 +218,65 @@ export async function analyzeEmail(email: EmailInput): Promise<AnalysisResult> {
 
     technicalDetails.tfidfScore = String(tfidfResult.phishingScore);
     technicalDetails.tfidfTermsMatched = String(tfidfResult.totalTermsMatched);
+  }
+
+  const svmResult = classifyWithSvm(fullText);
+  let svmAnalysis: AnalysisResult["svmAnalysis"] = undefined;
+
+  if (svmResult.featureCount > 0) {
+    const svmContribution = Math.round(svmResult.phishingProbability * 15);
+    score += svmContribution;
+
+    if (svmResult.phishingProbability >= 0.7) {
+      reasons.push(
+        `SVM classifier indicates high phishing probability (${Math.round(svmResult.phishingProbability * 100)}%).`
+      );
+    } else if (svmResult.phishingProbability >= 0.4) {
+      reasons.push(
+        `SVM classifier found moderate phishing signals (${Math.round(svmResult.phishingProbability * 100)}% probability).`
+      );
+    }
+
+    svmAnalysis = {
+      phishingProbability: svmResult.phishingProbability,
+      confidence: svmResult.confidence,
+      svmScore: svmResult.svmScore,
+      topFeatures: svmResult.topFeatures.slice(0, 10),
+      featureCount: svmResult.featureCount,
+    };
+
+    technicalDetails.svmProbability = `${Math.round(svmResult.phishingProbability * 100)}%`;
+    technicalDetails.svmConfidence = `${Math.round(svmResult.confidence * 100)}%`;
+  }
+
+  const bertResult = classifyWithBert(fullText);
+  let bertAnalysis: AnalysisResult["bertAnalysis"] = undefined;
+
+  if (bertResult.tokenCount > 2) {
+    const bertContribution = Math.round(bertResult.phishingProbability * 15);
+    score += bertContribution;
+
+    if (bertResult.phishingProbability >= 0.7) {
+      reasons.push(
+        `BERT deep learning model classifies this as likely phishing (${Math.round(bertResult.phishingProbability * 100)}% confidence).`
+      );
+    } else if (bertResult.phishingProbability >= 0.4) {
+      reasons.push(
+        `BERT model detected moderate phishing characteristics (${Math.round(bertResult.phishingProbability * 100)}% probability).`
+      );
+    }
+
+    bertAnalysis = {
+      phishingProbability: bertResult.phishingProbability,
+      confidence: bertResult.confidence,
+      tokenCount: bertResult.tokenCount,
+      attentionInsights: bertResult.attentionInsights.slice(0, 8),
+      modelVersion: bertResult.modelVersion,
+    };
+
+    technicalDetails.bertProbability = `${Math.round(bertResult.phishingProbability * 100)}%`;
+    technicalDetails.bertConfidence = `${Math.round(bertResult.confidence * 100)}%`;
+    technicalDetails.bertModel = bertResult.modelVersion;
   }
 
   score = Math.max(0, Math.min(100, score));
@@ -241,6 +302,8 @@ export async function analyzeEmail(email: EmailInput): Promise<AnalysisResult> {
     technicalDetails,
     headerAnalysis,
     tfidfAnalysis,
+    svmAnalysis,
+    bertAnalysis,
     impersonation,
     timeAnomaly,
   };

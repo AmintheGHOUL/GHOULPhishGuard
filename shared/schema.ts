@@ -30,6 +30,22 @@ export interface TfidfDetail {
   totalTermsMatched: number;
 }
 
+export interface SvmDetail {
+  phishingProbability: number;
+  confidence: number;
+  svmScore: number;
+  topFeatures: Array<{ feature: string; weight: number }>;
+  featureCount: number;
+}
+
+export interface BertDetail {
+  phishingProbability: number;
+  confidence: number;
+  tokenCount: number;
+  attentionInsights: Array<{ token: string; importance: number }>;
+  modelVersion: string;
+}
+
 export interface ImpersonationDetail {
   detected: boolean;
   impersonatedBrand: string;
@@ -57,6 +73,8 @@ export interface AnalysisResult {
     headersParsed: boolean;
   };
   tfidfAnalysis?: TfidfDetail;
+  svmAnalysis?: SvmDetail;
+  bertAnalysis?: BertDetail;
   impersonation?: ImpersonationDetail;
   timeAnomaly?: TimeAnomalyDetail;
 }

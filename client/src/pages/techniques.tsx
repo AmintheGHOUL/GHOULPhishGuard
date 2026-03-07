@@ -13,6 +13,8 @@ import {
   FileText,
   ArrowRight,
   BarChart3,
+  Zap,
+  Layers,
 } from "lucide-react";
 
 export default function Techniques() {
@@ -89,7 +91,97 @@ export default function Techniques() {
             <p className="text-xs text-muted-foreground">
               The classifier also includes "damper" terms (like "unsubscribe" and "privacy policy") that lower the score when they appear, since legitimate emails commonly include them.
             </p>
-            <p className="text-xs text-muted-foreground font-medium">Contribution: up to 35 points</p>
+            <p className="text-xs text-muted-foreground font-medium">Contribution: up to 20 points</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base font-semibold flex items-center gap-2">
+              <Zap className="w-5 h-5 text-primary" />
+              2. TF-IDF + Linear SVM Classifier
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <p className="text-sm text-muted-foreground leading-relaxed">
+              A Support Vector Machine (SVM) is a machine learning model that draws a decision boundary between phishing and legitimate emails in high-dimensional feature space. We combine TF-IDF vectorization with a pre-trained Linear SVM for classification.
+            </p>
+            <div className="bg-muted rounded-md p-3">
+              <p className="text-xs font-mono text-muted-foreground mb-2">How it works:</p>
+              <p className="text-xs font-mono">decision = w . x + b</p>
+              <ul className="text-xs text-muted-foreground mt-2 space-y-1">
+                <li><span className="font-medium text-foreground">x</span> — TF-IDF feature vector (150 dimensions for vocabulary terms)</li>
+                <li><span className="font-medium text-foreground">w</span> — pre-trained weight vector (learned from phishing corpus)</li>
+                <li><span className="font-medium text-foreground">b</span> — bias term (decision threshold)</li>
+                <li><span className="font-medium text-foreground">sigmoid(decision)</span> — converts to probability (0-100%)</li>
+              </ul>
+            </div>
+            <div className="bg-muted rounded-md p-3">
+              <p className="text-xs font-medium mb-1">Bigram Feature Extraction</p>
+              <p className="text-xs text-muted-foreground">
+                Beyond single words, the SVM also detects two-word combinations (bigrams) that are strongly associated with phishing. This captures phrases like "account suspended," "verify identity," and "wire transfer" that are more suspicious as pairs than individually.
+              </p>
+              <div className="flex flex-wrap gap-1.5 mt-2">
+                {["account suspended", "verify identity", "wire transfer", "enable macros", "act immediately", "arrest warrant"].map((term) => (
+                  <span key={term} className="px-2 py-0.5 rounded bg-red-500/10 text-red-500 text-xs font-mono">{term}</span>
+                ))}
+              </div>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              The SVM outputs a phishing probability (0-100%) along with the top contributing features, showing which words most influenced the classification decision.
+            </p>
+            <p className="text-xs text-muted-foreground font-medium">Contribution: up to 15 points</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base font-semibold flex items-center gap-2">
+              <Brain className="w-5 h-5 text-primary" />
+              3. BERT Deep Learning Classifier
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <p className="text-sm text-muted-foreground leading-relaxed">
+              BERT (Bidirectional Encoder Representations from Transformers) is a deep learning model that understands language context. Unlike TF-IDF which treats words independently, BERT understands that "your account has been suspended" is more threatening than each word alone.
+            </p>
+            <div className="bg-muted rounded-md p-3">
+              <p className="text-xs font-mono text-muted-foreground mb-2">Architecture (phishbert-v1-distilled):</p>
+              <ul className="text-xs text-muted-foreground space-y-1">
+                <li><span className="font-medium text-foreground">Subword Tokenization</span> — splits text into meaningful fragments ("un" + "auth" + "or" + "ized")</li>
+                <li><span className="font-medium text-foreground">Positional Encoding</span> — encodes where each token appears in the sequence</li>
+                <li><span className="font-medium text-foreground">Self-Attention</span> — each token "attends" to every other token to capture context</li>
+                <li><span className="font-medium text-foreground">Mean Pooling</span> — aggregates all token representations into one vector</li>
+                <li><span className="font-medium text-foreground">Classification Head</span> — linear layer + sigmoid to produce phishing probability</li>
+              </ul>
+            </div>
+            <div className="bg-muted rounded-md p-3">
+              <p className="text-xs font-medium mb-1">Self-Attention Mechanism</p>
+              <p className="text-xs text-muted-foreground">
+                The key innovation of BERT is self-attention. For each word, it computes how much "attention" to pay to every other word in the email. This means it can understand that "click" near "verify" and "suspended" is suspicious, even if those words are far apart in the text.
+              </p>
+              <p className="text-xs font-mono text-muted-foreground mt-2">
+                attention(Q, K, V) = softmax(QK&#x1D40; / &#x221A;d) . V
+              </p>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              The model returns the top attention-weighted tokens, showing which parts of the email the model focused on most when making its classification.
+            </p>
+            <p className="text-xs text-muted-foreground font-medium">Contribution: up to 15 points</p>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-muted/50">
+          <CardContent className="pt-4">
+            <div className="flex items-start gap-3">
+              <Layers className="w-5 h-5 text-primary mt-0.5 shrink-0" />
+              <div>
+                <p className="text-sm font-medium mb-2">Ensemble Scoring</p>
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  All three ML classifiers (TF-IDF, SVM, BERT) contribute to the final score independently. Using multiple models together is called an "ensemble" approach — it is more robust than any single model because different classifiers catch different types of phishing. If all three agree the email is phishing, the combined ML contribution can reach up to 50 points. The remaining points come from rule-based checks (headers, links, domains, attachments).
+                </p>
+              </div>
+            </div>
           </CardContent>
         </Card>
 
@@ -97,7 +189,7 @@ export default function Techniques() {
           <CardHeader className="pb-2">
             <CardTitle className="text-base font-semibold flex items-center gap-2">
               <Globe className="w-5 h-5 text-primary" />
-              2. Domain Impersonation Detection
+              4. Domain Impersonation Detection
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
@@ -152,7 +244,7 @@ export default function Techniques() {
           <CardHeader className="pb-2">
             <CardTitle className="text-base font-semibold flex items-center gap-2">
               <ShieldCheck className="w-5 h-5 text-primary" />
-              3. Email Authentication (SPF / DKIM / DMARC)
+              5. Email Authentication (SPF / DKIM / DMARC)
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
@@ -190,7 +282,7 @@ export default function Techniques() {
           <CardHeader className="pb-2">
             <CardTitle className="text-base font-semibold flex items-center gap-2">
               <LinkIcon className="w-5 h-5 text-primary" />
-              4. Link Deception Analysis
+              6. Link Deception Analysis
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
@@ -212,7 +304,7 @@ export default function Techniques() {
           <CardHeader className="pb-2">
             <CardTitle className="text-base font-semibold flex items-center gap-2">
               <FileText className="w-5 h-5 text-primary" />
-              5. Content Pattern Analysis
+              7. Content Pattern Analysis
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
@@ -245,7 +337,7 @@ export default function Techniques() {
           <CardHeader className="pb-2">
             <CardTitle className="text-base font-semibold flex items-center gap-2">
               <Mail className="w-5 h-5 text-primary" />
-              6. Domain Mismatch Detection
+              8. Domain Mismatch Detection
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
@@ -267,7 +359,7 @@ export default function Techniques() {
           <CardHeader className="pb-2">
             <CardTitle className="text-base font-semibold flex items-center gap-2">
               <Paperclip className="w-5 h-5 text-primary" />
-              7. Attachment Risk Assessment
+              9. Attachment Risk Assessment
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
@@ -287,7 +379,7 @@ export default function Techniques() {
           <CardHeader className="pb-2">
             <CardTitle className="text-base font-semibold flex items-center gap-2">
               <Clock className="w-5 h-5 text-primary" />
-              8. Time-of-Day Anomaly Detection
+              10. Time-of-Day Anomaly Detection
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">

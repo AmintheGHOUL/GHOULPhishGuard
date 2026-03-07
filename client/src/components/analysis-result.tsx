@@ -17,6 +17,8 @@ import {
   BarChart3,
   Globe,
   Clock,
+  Zap,
+  Layers,
 } from "lucide-react";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
@@ -40,6 +42,32 @@ function AuthStatusBadge({ status }: { status: string }) {
     <span className={cn("inline-flex items-center px-2 py-0.5 rounded text-xs font-medium uppercase", colors[status] || colors.unknown)}>
       {status}
     </span>
+  );
+}
+
+function ProbabilityBar({ probability, label }: { probability: number; label: string }) {
+  const pct = Math.round(probability * 100);
+  return (
+    <div className="space-y-1">
+      <div className="flex items-center justify-between">
+        <span className="text-xs text-muted-foreground">{label}</span>
+        <span className={cn(
+          "text-sm font-semibold",
+          pct >= 70 ? "text-red-500" : pct >= 40 ? "text-orange-500" : "text-emerald-500"
+        )}>
+          {pct}%
+        </span>
+      </div>
+      <div className="w-full bg-muted rounded-full h-1.5">
+        <div
+          className={cn(
+            "h-1.5 rounded-full transition-all",
+            pct >= 70 ? "bg-red-500" : pct >= 40 ? "bg-orange-500" : "bg-emerald-500"
+          )}
+          style={{ width: `${Math.min(pct, 100)}%` }}
+        />
+      </div>
+    </div>
   );
 }
 
@@ -132,63 +160,135 @@ export function AnalysisResultView({ result }: AnalysisResultViewProps) {
         </Card>
       )}
 
-      {result.tfidfAnalysis && result.tfidfAnalysis.totalTermsMatched > 0 && (
+      {(result.tfidfAnalysis || result.svmAnalysis || result.bertAnalysis) && (
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-medium flex items-center gap-2">
-              <Brain className="w-4 h-4 text-muted-foreground" />
-              TF-IDF Text Analysis
+              <Layers className="w-4 h-4 text-muted-foreground" />
+              ML Classifier Ensemble
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="space-y-3">
-              <div className="flex items-center justify-between" data-testid="tfidf-score">
-                <span className="text-xs text-muted-foreground">Phishing Language Score</span>
-                <span className={cn(
-                  "text-sm font-semibold",
-                  result.tfidfAnalysis.phishingScore >= 50 ? "text-red-500" :
-                  result.tfidfAnalysis.phishingScore >= 25 ? "text-orange-500" :
-                  "text-emerald-500"
-                )}>
-                  {result.tfidfAnalysis.phishingScore}/100
-                </span>
-              </div>
-              <div className="w-full bg-muted rounded-full h-1.5">
-                <div
-                  className={cn(
-                    "h-1.5 rounded-full transition-all",
-                    result.tfidfAnalysis.phishingScore >= 50 ? "bg-red-500" :
-                    result.tfidfAnalysis.phishingScore >= 25 ? "bg-orange-500" :
-                    "bg-emerald-500"
-                  )}
-                  style={{ width: `${Math.min(result.tfidfAnalysis.phishingScore, 100)}%` }}
-                />
-              </div>
-              {result.tfidfAnalysis.topTerms.length > 0 && (
-                <div>
-                  <p className="text-xs text-muted-foreground mb-2 flex items-center gap-1">
-                    <BarChart3 className="w-3 h-3" />
-                    Top phishing indicators by TF-IDF weight
-                  </p>
-                  <div className="flex flex-wrap gap-1.5">
-                    {result.tfidfAnalysis.topTerms.map((t, i) => (
-                      <span
-                        key={i}
-                        className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-muted text-xs font-mono"
-                        data-testid={`tfidf-term-${i}`}
-                      >
-                        {t.term}
-                        <span className="text-muted-foreground">
-                          {t.tfidf.toFixed(3)}
-                        </span>
-                      </span>
-                    ))}
+            <div className="space-y-4">
+              {result.tfidfAnalysis && result.tfidfAnalysis.totalTermsMatched > 0 && (
+                <div className="space-y-3" data-testid="tfidf-section">
+                  <div className="flex items-center gap-2">
+                    <Brain className="w-3.5 h-3.5 text-muted-foreground" />
+                    <span className="text-xs font-medium">TF-IDF Keyword Analysis</span>
                   </div>
+                  <div data-testid="tfidf-score">
+                    <ProbabilityBar probability={result.tfidfAnalysis.phishingScore / 100} label="Phishing Language Score" />
+                  </div>
+                  {result.tfidfAnalysis.topTerms.length > 0 && (
+                    <div>
+                      <p className="text-xs text-muted-foreground mb-1.5 flex items-center gap-1">
+                        <BarChart3 className="w-3 h-3" />
+                        Top indicators by TF-IDF weight
+                      </p>
+                      <div className="flex flex-wrap gap-1.5">
+                        {result.tfidfAnalysis.topTerms.map((t, i) => (
+                          <span
+                            key={i}
+                            className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-muted text-xs font-mono"
+                            data-testid={`tfidf-term-${i}`}
+                          >
+                            {t.term}
+                            <span className="text-muted-foreground">
+                              {t.tfidf.toFixed(3)}
+                            </span>
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  <p className="text-xs text-muted-foreground" data-testid="tfidf-terms-matched">
+                    {result.tfidfAnalysis.totalTermsMatched} phishing-related term{result.tfidfAnalysis.totalTermsMatched !== 1 ? "s" : ""} detected
+                  </p>
                 </div>
               )}
-              <p className="text-xs text-muted-foreground" data-testid="tfidf-terms-matched">
-                {result.tfidfAnalysis.totalTermsMatched} phishing-related term{result.tfidfAnalysis.totalTermsMatched !== 1 ? "s" : ""} detected
-              </p>
+
+              {result.tfidfAnalysis && result.svmAnalysis && (
+                <div className="border-t border-border" />
+              )}
+
+              {result.svmAnalysis && result.svmAnalysis.featureCount > 0 && (
+                <div className="space-y-3" data-testid="svm-section">
+                  <div className="flex items-center gap-2">
+                    <Zap className="w-3.5 h-3.5 text-muted-foreground" />
+                    <span className="text-xs font-medium">TF-IDF + Linear SVM</span>
+                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground">
+                      {result.svmAnalysis.featureCount} features
+                    </span>
+                  </div>
+                  <div data-testid="svm-probability">
+                    <ProbabilityBar probability={result.svmAnalysis.phishingProbability} label="Phishing Probability" />
+                  </div>
+                  <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                    <span>Decision score: <span className="font-mono">{result.svmAnalysis.svmScore}</span></span>
+                    <span>Confidence: <span className="font-mono">{Math.round(result.svmAnalysis.confidence * 100)}%</span></span>
+                  </div>
+                  {result.svmAnalysis.topFeatures.length > 0 && (
+                    <div>
+                      <p className="text-xs text-muted-foreground mb-1.5">Top SVM features</p>
+                      <div className="flex flex-wrap gap-1.5">
+                        {result.svmAnalysis.topFeatures.slice(0, 8).map((f, i) => (
+                          <span
+                            key={i}
+                            className={cn(
+                              "inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-mono",
+                              f.weight > 0 ? "bg-red-500/10 text-red-600 dark:text-red-400" : "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+                            )}
+                            data-testid={`svm-feature-${i}`}
+                          >
+                            {f.feature}
+                            <span className="opacity-70">{f.weight > 0 ? "+" : ""}{f.weight}</span>
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {result.svmAnalysis && result.bertAnalysis && (
+                <div className="border-t border-border" />
+              )}
+
+              {result.bertAnalysis && result.bertAnalysis.tokenCount > 2 && (
+                <div className="space-y-3" data-testid="bert-section">
+                  <div className="flex items-center gap-2">
+                    <Brain className="w-3.5 h-3.5 text-primary" />
+                    <span className="text-xs font-medium">BERT Deep Learning</span>
+                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-primary/10 text-primary">
+                      {result.bertAnalysis.modelVersion}
+                    </span>
+                  </div>
+                  <div data-testid="bert-probability">
+                    <ProbabilityBar probability={result.bertAnalysis.phishingProbability} label="Phishing Probability" />
+                  </div>
+                  <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                    <span>Tokens: <span className="font-mono">{result.bertAnalysis.tokenCount}</span></span>
+                    <span>Confidence: <span className="font-mono">{Math.round(result.bertAnalysis.confidence * 100)}%</span></span>
+                  </div>
+                  {result.bertAnalysis.attentionInsights.length > 0 && (
+                    <div>
+                      <p className="text-xs text-muted-foreground mb-1.5">Attention-weighted tokens</p>
+                      <div className="flex flex-wrap gap-1.5">
+                        {result.bertAnalysis.attentionInsights.map((insight, i) => (
+                          <span
+                            key={i}
+                            className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-primary/10 text-xs font-mono"
+                            data-testid={`bert-token-${i}`}
+                          >
+                            {insight.token}
+                            <span className="text-muted-foreground">{insight.importance}</span>
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -277,7 +377,7 @@ export function AnalysisResultView({ result }: AnalysisResultViewProps) {
 
       <div>
         <button
-          className="flex items-center gap-2 text-xs text-muted-foreground hover-elevate px-3 py-2 rounded-md w-full"
+          className="flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground px-3 py-2 rounded-md w-full"
           onClick={() => setShowTechnical(!showTechnical)}
           data-testid="button-toggle-technical"
         >
