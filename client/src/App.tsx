@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { Switch, Route, Link, useLocation } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
@@ -5,7 +6,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { ThemeProvider, useTheme } from "@/components/theme-provider";
 import { Button } from "@/components/ui/button";
-import { Moon, Sun, Shield, Search, BookOpen, AlertTriangle, Cpu } from "lucide-react";
+import { Moon, Sun, Shield, Search, BookOpen, AlertTriangle, Cpu, Github, Newspaper } from "lucide-react";
 import { cn } from "@/lib/utils";
 import NotFound from "@/pages/not-found";
 import Dashboard from "@/pages/dashboard";
@@ -81,11 +82,52 @@ function AppLayout() {
       <main className="flex-1">
         <AppRouter />
       </main>
-      <footer className="border-t py-6 mt-8">
-        <div className="max-w-5xl mx-auto px-4 text-center text-xs text-muted-foreground">
-          GHOULPhishGuard — Email Threat Analyzer. Built for education and awareness.
+      <footer className="border-t py-8 mt-8 bg-muted/30">
+        <div className="max-w-5xl mx-auto px-4 space-y-4">
+          <div className="text-center text-xs text-muted-foreground">
+            GHOULPhishGuard — Email Threat Analyzer. Built for education and awareness.
+          </div>
+          
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-6 text-xs">
+            <a
+              href="https://github.com/AmintheGHOUL"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-1.5 text-muted-foreground hover:text-foreground transition-colors"
+            >
+              <Github className="w-3.5 h-3.5" />
+              GitHub
+            </a>
+            <a
+              href="https://amintheghoul.medium.com"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-1.5 text-muted-foreground hover:text-foreground transition-colors"
+            >
+              <Newspaper className="w-3.5 h-3.5" />
+              Medium
+            </a>
+          </div>
+
+          <div className="flex items-center justify-center pt-3">
+            <div 
+              className="badge-base LI-profile-badge" 
+              data-locale="en_US" 
+              data-size="small" 
+              data-theme="dark" 
+              data-type="VERTICAL" 
+              data-vanity="amin-majdi-al-sammar" 
+              data-version="v1"
+            >
+              <a className="badge-base__link LI-simple-link" href="https://www.linkedin.com/in/amin-majdi-al-sammar?trk=profile-badge">
+                LinkedIn
+              </a>
+            </div>
+          </div>
         </div>
       </footer>
+
+      <script src="https://platform.linkedin.com/badges/js/profile.js" async defer></script>
     </div>
   );
 }

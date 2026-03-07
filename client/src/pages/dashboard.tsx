@@ -19,6 +19,7 @@ import {
   Link as LinkIcon,
   Paperclip,
   ChevronDown,
+  AlertCircle,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { AnalysisResult, EmailInput } from "@shared/schema";
@@ -86,6 +87,16 @@ export default function Dashboard() {
 
   return (
     <div className="max-w-3xl mx-auto p-4 sm:p-6 space-y-6">
+      <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-4 flex gap-3">
+        <AlertCircle className="w-5 h-5 text-blue-600 dark:text-blue-400 mt-0.5 shrink-0" />
+        <div className="text-sm text-blue-900 dark:text-blue-200">
+          <p className="font-medium mb-1">Demo UI Version</p>
+          <p className="text-xs opacity-90">
+            This is the public interface showcase. Full phishing analysis runs in the local/development version. View the project on <a href="https://github.com/AmintheGHOUL" target="_blank" rel="noopener noreferrer" className="underline hover:opacity-75">GitHub</a>.
+          </p>
+        </div>
+      </div>
+
       <div className="flex items-center gap-3">
         <div className="flex items-center justify-center w-10 h-10 rounded-md bg-primary/10">
           <Shield className="w-5 h-5 text-primary" />
