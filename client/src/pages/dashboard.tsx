@@ -6,7 +6,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AnalysisResultView } from "@/components/analysis-result";
 import { Separator } from "@/components/ui/separator";
 import {
@@ -20,87 +19,12 @@ import {
   Link as LinkIcon,
   Paperclip,
   ChevronDown,
-  Chrome,
-  Download,
-  Server,
-  CheckCircle2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { AnalysisResult, EmailInput } from "@shared/schema";
+import { Link } from "wouter";
 
-function SetupInstructions() {
-  const backendUrl = window.location.origin;
-
-  return (
-    <div className="space-y-4" data-testid="setup-instructions">
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium flex items-center gap-2">
-              <Download className="w-4 h-4 text-muted-foreground" />
-              Step 1: Get Extension
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="text-sm text-muted-foreground space-y-2">
-            <p>Download the extension files from this server:</p>
-            <a
-              href="/extension/manifest.json"
-              target="_blank"
-              className="block text-xs font-mono text-primary underline"
-              data-testid="link-manifest"
-            >
-              /extension/manifest.json
-            </a>
-            <p className="text-xs">
-              Save all files from <code className="text-xs bg-muted px-1 py-0.5 rounded">/extension/</code> into a local folder:
-              manifest.json, content.js, content.css, popup.html
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium flex items-center gap-2">
-              <Chrome className="w-4 h-4 text-muted-foreground" />
-              Step 2: Load in Chrome
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="text-sm text-muted-foreground space-y-2">
-            <ol className="space-y-1.5 text-xs list-decimal list-inside">
-              <li>Go to <code className="bg-muted px-1 py-0.5 rounded">chrome://extensions</code></li>
-              <li>Enable Developer mode (top right)</li>
-              <li>Click "Load unpacked"</li>
-              <li>Select the folder with the extension files</li>
-            </ol>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium flex items-center gap-2">
-              <Server className="w-4 h-4 text-muted-foreground" />
-              Step 3: Configure Backend
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="text-sm text-muted-foreground space-y-2">
-            <p className="text-xs">Click the PhishGuard icon in Chrome and set the backend URL to:</p>
-            <code className="block text-xs bg-muted px-2 py-1.5 rounded font-mono break-all" data-testid="text-backend-url">
-              {backendUrl}
-            </code>
-            <p className="text-xs">Then open Gmail and click on any email.</p>
-          </CardContent>
-        </Card>
-      </div>
-
-      <div className="flex items-center gap-2 text-xs text-muted-foreground">
-        <CheckCircle2 className="w-3.5 h-3.5 text-primary" />
-        <span>Backend is running and ready to receive requests from the extension.</span>
-      </div>
-    </div>
-  );
-}
-
-function ManualAnalyzer() {
+export default function Dashboard() {
   const [fromEmail, setFromEmail] = useState("");
   const [subject, setSubject] = useState("");
   const [bodyText, setBodyText] = useState("");
@@ -161,7 +85,24 @@ function ManualAnalyzer() {
   };
 
   return (
-    <div className="space-y-4">
+    <div className="max-w-3xl mx-auto p-4 sm:p-6 space-y-6">
+      <div className="flex items-center gap-3">
+        <div className="flex items-center justify-center w-10 h-10 rounded-md bg-primary/10">
+          <Shield className="w-5 h-5 text-primary" />
+        </div>
+        <div>
+          <h1 className="text-xl font-semibold tracking-tight">Email Analyzer</h1>
+          <p className="text-sm text-muted-foreground">
+            Paste email details below to check for phishing threats.{" "}
+            <Link href="/how-to-use">
+              <span className="text-primary underline cursor-pointer" data-testid="link-how-to-use">
+                Learn how to get email data
+              </span>
+            </Link>
+          </p>
+        </div>
+      </div>
+
       <form onSubmit={handleSubmit} className="space-y-4">
         <Card>
           <CardHeader className="pb-3">
@@ -234,7 +175,7 @@ function ManualAnalyzer() {
         <div>
           <button
             type="button"
-            className="flex items-center gap-2 text-xs text-muted-foreground hover-elevate px-3 py-2 rounded-md w-full"
+            className="flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground px-3 py-2 rounded-md w-full"
             onClick={() => setShowAdvanced(!showAdvanced)}
             data-testid="button-toggle-advanced"
           >
@@ -379,45 +320,6 @@ function ManualAnalyzer() {
           <AnalysisResultView result={analyzeMutation.data} />
         </>
       )}
-    </div>
-  );
-}
-
-export default function Dashboard() {
-  return (
-    <div className="max-w-3xl mx-auto p-4 sm:p-6 space-y-6">
-      <div className="flex items-center gap-3">
-        <div className="flex items-center justify-center w-10 h-10 rounded-md bg-primary/10">
-          <Shield className="w-5 h-5 text-primary" />
-        </div>
-        <div>
-          <h1 className="text-xl font-semibold tracking-tight">PhishGuard</h1>
-          <p className="text-sm text-muted-foreground">
-            Email threat analysis with full header parsing
-          </p>
-        </div>
-      </div>
-
-      <Tabs defaultValue="analyze" className="w-full">
-        <TabsList data-testid="tabs-nav">
-          <TabsTrigger value="analyze" data-testid="tab-analyze">
-            <Search className="w-3.5 h-3.5 mr-1.5" />
-            Analyze
-          </TabsTrigger>
-          <TabsTrigger value="setup" data-testid="tab-setup">
-            <Chrome className="w-3.5 h-3.5 mr-1.5" />
-            Extension Setup
-          </TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="analyze" className="mt-4">
-          <ManualAnalyzer />
-        </TabsContent>
-
-        <TabsContent value="setup" className="mt-4">
-          <SetupInstructions />
-        </TabsContent>
-      </Tabs>
     </div>
   );
 }

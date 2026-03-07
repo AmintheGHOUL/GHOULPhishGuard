@@ -1,14 +1,13 @@
 # PhishGuard - Email Threat Analyzer
 
 ## Overview
-PhishGuard is a Chrome extension + backend API for analyzing emails for phishing threats. The backend runs on Replit and provides the analysis API. The Chrome extension injects into Gmail and sends email data to the backend for analysis.
+PhishGuard is a web-based email threat analyzer that checks emails for phishing indicators. Users paste email details and raw headers into the analyzer, and it returns a risk score with plain-English explanations.
 
-The web frontend serves as a landing page with a manual analysis tool and Chrome extension setup instructions.
+The app includes educational pages: a usage guide (how to extract email headers), a phishing awareness guide for non-technical users, and a detection techniques page explaining the methods used.
 
 ## Architecture
 - **Backend:** Express.js API running on Replit
-- **Chrome Extension:** Content script for Gmail + popup for configuration
-- **Web Frontend:** React landing page with manual analyzer + setup instructions
+- **Frontend:** React multi-page app with wouter routing
 - **No database** - stateless analysis, results are not persisted
 
 ## Key Features
@@ -25,46 +24,25 @@ The web frontend serves as a landing page with a manual analysis tool and Chrome
 - Plain-English explanations of findings
 - Risk scoring (0-100) with verdicts
 
-## Detection Pipeline
-1. Domain impersonation check (Levenshtein + homoglyphs + brand keyword matching)
-2. Time-of-day anomaly analysis (from Date header)
-3. Email text → tokenization → TF-IDF feature extraction → phishing language score
-4. Heuristic pattern matching (urgency, emotional, sensitive info, platform abuse)
-5. Header authentication analysis (SPF/DKIM/DMARC)
-6. Link/domain analysis (deception, brand impersonation, domain mismatch)
-7. Attachment risk assessment
-8. Combined scoring → verdict + recommendations
-
-## TF-IDF Classifier
-- Pre-trained IDF weights from phishing email corpus (~100 phishing indicator terms)
-- Multi-word phrase detection (e.g., "within 24 hours", "click here", "dear customer")
-- Legitimate email damping terms (e.g., "unsubscribe", "privacy policy", "newsletter")
-- TF-IDF contribution weighted at 35% of its score added to final risk score
-- Located in `server/services/tfidfClassifier.ts`
-
-## Domain Impersonation
-- Levenshtein distance for typosquatting detection (e.g., paypa1.com → paypal.com)
-- Homoglyph detection for look-alike characters (e.g., rn→m, 0→o, 1→l)
-- Brand name in subdomain detection (e.g., microsoft-security-alert.com)
-- 30+ known brand domains tracked
-- Located in `server/services/domainImpersonation.ts`
+## Pages
+- **/** - Email Analyzer (main tool)
+- **/how-to-use** - Instructions on extracting email headers from Gmail, Outlook, Yahoo, Apple Mail, Thunderbird
+- **/awareness** - Phishing awareness guide for non-technical users with real examples
+- **/techniques** - Explanation of all detection techniques used (TF-IDF, Levenshtein, SPF/DKIM/DMARC, etc.)
 
 ## Project Structure
 ```
 client/src/
-  App.tsx                  - Main app layout with header + theme toggle
+  App.tsx                  - Navigation layout with wouter routing (4 pages)
   components/
     theme-provider.tsx     - Dark/light theme context
     risk-gauge.tsx         - Visual risk score display
     analysis-result.tsx    - Full result view with impersonation/time/auth/TF-IDF cards
   pages/
-    dashboard.tsx          - Main page: manual analyzer + extension setup tabs
-
-client/public/extension/   - Chrome extension files
-  manifest.json            - Manifest V3
-  content.js               - Gmail content script
-  content.css              - Side panel styling
-  popup.html               - Extension popup with backend URL config
+    dashboard.tsx          - Email analyzer form + results
+    how-to-use.tsx         - Instructions for getting email data/headers
+    awareness.tsx          - Phishing awareness guide
+    techniques.tsx         - Detection techniques explained
 
 server/
   routes.ts                - POST /api/analyze-email, GET /api/health
