@@ -1,0 +1,178 @@
+import { analyzeContent } from "./contentRules";
+import { extractFirstHttpLink, findDomainMismatch } from "./reputation";
+import { safeUrl, getDomainFromEmail, getBaseDomain } from "./domains";
+import { parseEmailHeaders, headerAuthFindings, hasRealAuthHeaders } from "./headerParser";
+import type { EmailInput, AnalysisResult } from "@shared/schema";
+
+function detectSuspiciousAttachments(attachments: Array<{ filename: string }> = []) {
+  const riskyExts = [".zip", ".exe", ".js", ".iso", ".html", ".docm", ".xlsm", ".scr"];
+  const found = attachments
+    .map((a) => a.filename || "")
+    .filter((name) => riskyExts.some((ext) => name.toLowerCase().endsWith(ext)));
+
+  return {
+    score: found.length ? 12 : 0,
+    findings: found.length
+      ? [`This email contains risky attachment types: ${found.join(", ")}.`]
+      : [],
+  };
+}
+
+function detectLinkDeception(
+  links: Array<{ text: string; href: string }> = [],
+  observedBrands: string[] = []
+) {
+  let score = 0;
+  const findings: string[] = [];
+  const technical: Record<string, string> = {};
+
+  for (const link of links) {
+    const parsed = safeUrl(link.href);
+    if (!parsed) continue;
+    const baseDomain = getBaseDomain(parsed.hostname);
+
+    if (link.text && /^https?:/i.test(link.text) && link.text !== link.href) {
+      score += 15;
+      findings.push("A visible link does not match the real destination behind it.");
+    }
+
+    for (const brand of observedBrands) {
+      if (
+        parsed.hostname.toLowerCase().includes(brand.split(".")[0]) &&
+        baseDomain !== brand
+      ) {
+        score += 25;
+        findings.push(
+          `A link tries to look like ${brand}, but the real website is ${baseDomain}.`
+        );
+      }
+    }
+
+    technical.primaryLinkDomain = baseDomain;
+    technical.primaryLink = link.href;
+  }
+
+  return { score, findings, technical };
+}
+
+function verdictFromScore(score: number): string {
+  if (score >= 75) return "Likely phishing";
+  if (score >= 50) return "High risk";
+  if (score >= 25) return "Suspicious";
+  return "Low risk";
+}
+
+function confidenceFromScore(score: number): string {
+  if (score >= 75) return "high";
+  if (score >= 40) return "medium";
+  return "low";
+}
+
+function dedupe(items: string[]): string[] {
+  return Array.from(new Set(items)).slice(0, 10);
+}
+
+export async function analyzeEmail(email: EmailInput): Promise<AnalysisResult> {
+  const bodyText = email.bodyText || "";
+  const subject = email.subject || "";
+  const rawHeaders = email.rawHeaders || "";
+  let fromEmail = (email.fromEmail || "").toLowerCase();
+  let replyTo = (email.replyTo || "").toLowerCase();
+  let returnPath = (email.returnPath || "").toLowerCase();
+  const attachments = email.attachments || [];
+  const links = email.links || [];
+  const observedBrands = email.observedBrandDomains || [];
+
+  let score = 0;
+  const reasons: string[] = [];
+  let headerAnalysis: AnalysisResult["headerAnalysis"] = undefined;
+
+  if (rawHeaders && hasRealAuthHeaders(rawHeaders)) {
+    const parsed = parseEmailHeaders(rawHeaders);
+
+    if (!fromEmail && parsed.from) fromEmail = parsed.from.toLowerCase();
+    if (!replyTo && parsed.replyTo) replyTo = parsed.replyTo.toLowerCase();
+    if (!returnPath && parsed.returnPath) returnPath = parsed.returnPath.toLowerCase();
+
+    const authFindings = headerAuthFindings(parsed);
+    score += authFindings.score;
+    reasons.push(...authFindings.findings);
+
+    headerAnalysis = {
+      spf: parsed.spf,
+      dkim: parsed.dkim,
+      dmarc: parsed.dmarc,
+      receivedHops: parsed.receivedChain.length,
+      headersParsed: true,
+    };
+  } else if (rawHeaders) {
+    const parsed = parseEmailHeaders(rawHeaders);
+    if (!fromEmail && parsed.from) fromEmail = parsed.from.toLowerCase();
+    if (!replyTo && parsed.replyTo) replyTo = parsed.replyTo.toLowerCase();
+    if (!returnPath && parsed.returnPath) returnPath = parsed.returnPath.toLowerCase();
+  }
+
+  const senderBaseDomain = getBaseDomain(getDomainFromEmail(fromEmail));
+
+  const technicalDetails: Record<string, string> = {
+    sender: fromEmail || "unknown",
+    subject: subject || "none",
+    linksFound: String(links.length),
+    attachmentsFound: String(attachments.length),
+    senderDomain: senderBaseDomain || "unknown",
+  };
+
+  const contentAnalysis = analyzeContent(bodyText, subject);
+  score += contentAnalysis.score;
+  reasons.push(...contentAnalysis.findings);
+
+  const attachmentAnalysis = detectSuspiciousAttachments(attachments);
+  score += attachmentAnalysis.score;
+  reasons.push(...attachmentAnalysis.findings);
+
+  const mismatch = findDomainMismatch(fromEmail, replyTo, returnPath);
+  if (mismatch.replyMismatch) {
+    score += 20;
+    reasons.push(
+      `The reply address belongs to ${mismatch.replyDomain}, which does not match the sender's domain.`
+    );
+  }
+  if (mismatch.returnPathMismatch) {
+    score += 12;
+    reasons.push(
+      `The return-path belongs to ${mismatch.returnPathDomain}, which is different from the sender's domain.`
+    );
+  }
+
+  technicalDetails.replyToDomain = mismatch.replyDomain || "not available";
+  technicalDetails.returnPathDomain = mismatch.returnPathDomain || "not available";
+
+  const linkAnalysis = detectLinkDeception(links, observedBrands);
+  score += linkAnalysis.score;
+  reasons.push(...linkAnalysis.findings);
+  Object.assign(technicalDetails, linkAnalysis.technical);
+
+  score = Math.max(0, Math.min(100, score));
+
+  const userActions: string[] = [];
+  if (score >= 50) {
+    userActions.push("Do not click links or open attachments in this email.");
+    userActions.push("Verify the request using the company's real website or phone number.");
+  } else if (score >= 25) {
+    userActions.push("Be careful with links and verify the sender before taking action.");
+  } else {
+    userActions.push(
+      "No strong phishing signal was found in the visible content, but keep normal caution."
+    );
+  }
+
+  return {
+    riskScore: score,
+    verdict: verdictFromScore(score),
+    confidence: confidenceFromScore(score),
+    reasons: dedupe(reasons),
+    userActions: dedupe(userActions),
+    technicalDetails,
+    headerAnalysis,
+  };
+}

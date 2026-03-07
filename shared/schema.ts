@@ -1,18 +1,41 @@
-import { sql } from "drizzle-orm";
-import { pgTable, text, varchar } from "drizzle-orm/pg-core";
-import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
-export const users = pgTable("users", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  username: text("username").notNull().unique(),
-  password: text("password").notNull(),
+export const emailInputSchema = z.object({
+  fromEmail: z.string().default(""),
+  subject: z.string().default(""),
+  bodyText: z.string().default(""),
+  replyTo: z.string().default(""),
+  returnPath: z.string().default(""),
+  rawHeaders: z.string().default(""),
+  links: z.array(z.object({
+    text: z.string().default(""),
+    href: z.string().default(""),
+  })).default([]),
+  attachments: z.array(z.object({
+    filename: z.string().default(""),
+  })).default([]),
+  observedBrandDomains: z.array(z.string()).default([]),
 });
 
-export const insertUserSchema = createInsertSchema(users).pick({
-  username: true,
-  password: true,
-});
+export type EmailInput = z.infer<typeof emailInputSchema>;
 
-export type InsertUser = z.infer<typeof insertUserSchema>;
-export type User = typeof users.$inferSelect;
+export interface AuthDetail {
+  status: string;
+  detail: string;
+}
+
+export interface AnalysisResult {
+  riskScore: number;
+  verdict: string;
+  confidence: string;
+  reasons: string[];
+  userActions: string[];
+  technicalDetails: Record<string, string>;
+  headerAnalysis?: {
+    spf: AuthDetail;
+    dkim: AuthDetail;
+    dmarc: AuthDetail;
+    receivedHops: number;
+    headersParsed: boolean;
+  };
+}
