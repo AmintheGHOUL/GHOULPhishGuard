@@ -2,6 +2,15 @@
 
 GHOULPhishGuard is an explainable phishing email analyzer built with React, Vite, Express, and TypeScript. It combines header analysis, infrastructure checks, URL and domain heuristics, and multiple AI/ML text classifiers to produce a 0-100 risk score with human-readable findings.
 
+### Key Capabilities
+
+- SPF, DKIM, and DMARC parsing
+- provider and source infrastructure analysis
+- domain impersonation and homoglyph detection
+- URL extraction and reputation checks
+- explainable TF-IDF, SVM, and DistilBERT scoring
+- phishing awareness guidance for end users
+
 ## Problem
 
 Phishing detection is difficult for two reasons:
@@ -611,7 +620,7 @@ Tested locally with:
 
 ```bash
 git clone https://github.com/AmintheGHOUL/GHOULPhishGuard.git
-cd Phish-Guard
+cd GHOULPhishGuard
 ```
 
 ### 2. Install Dependencies
