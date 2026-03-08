@@ -49,6 +49,29 @@ function AuthStatusBadge({ status }: { status: string }) {
   );
 }
 
+function AlignmentBadge({ aligned }: { aligned: boolean | undefined }) {
+  if (aligned === undefined) {
+    return (
+      <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium uppercase bg-muted text-muted-foreground">
+        unknown
+      </span>
+    );
+  }
+
+  return (
+    <span
+      className={cn(
+        "inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium uppercase",
+        aligned
+          ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"
+          : "bg-orange-500/15 text-orange-600 dark:text-orange-400"
+      )}
+    >
+      {aligned ? "aligned" : "misaligned"}
+    </span>
+  );
+}
+
 function ProbabilityBar({ probability, label }: { probability: number; label: string }) {
   const pct = Math.round(probability * 100);
   return (
@@ -293,6 +316,103 @@ export function AnalysisResultView({ result }: AnalysisResultViewProps) {
             <p className="text-xs text-muted-foreground mt-3 text-center" data-testid="text-received-hops">
               {result.headerAnalysis.receivedHops} server hop{result.headerAnalysis.receivedHops !== 1 ? "s" : ""} detected
             </p>
+            {(result.headerAnalysis.spfMailFrom || result.headerAnalysis.dkimDomain || result.headerAnalysis.dmarcHeaderFrom || result.headerAnalysis.sourceIp || result.headerAnalysis.sourceHost) && (
+              <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                {result.headerAnalysis.spfMailFrom && (
+                  <div className="space-y-1" data-testid="auth-detail-spf-mailfrom">
+                    <p className="text-muted-foreground">SPF mail-from</p>
+                    <p className="font-mono break-all">{sanitizePlain(result.headerAnalysis.spfMailFrom)}</p>
+                    <AlignmentBadge aligned={result.headerAnalysis.spfAligned} />
+                  </div>
+                )}
+                {result.headerAnalysis.dkimDomain && (
+                  <div className="space-y-1" data-testid="auth-detail-dkim-domain">
+                    <p className="text-muted-foreground">DKIM signing domain</p>
+                    <p className="font-mono break-all">
+                      {sanitizePlain(result.headerAnalysis.dkimDomain)}
+                      {result.headerAnalysis.dkimSelector ? ` (s=${result.headerAnalysis.dkimSelector})` : ""}
+                    </p>
+                    <AlignmentBadge aligned={result.headerAnalysis.dkimAligned} />
+                  </div>
+                )}
+                {result.headerAnalysis.dmarcHeaderFrom && (
+                  <div className="space-y-1" data-testid="auth-detail-dmarc-from">
+                    <p className="text-muted-foreground">DMARC header.from</p>
+                    <p className="font-mono break-all">{sanitizePlain(result.headerAnalysis.dmarcHeaderFrom)}</p>
+                    <AlignmentBadge aligned={result.headerAnalysis.dmarcAligned} />
+                  </div>
+                )}
+                {(result.headerAnalysis.sourceIp || result.headerAnalysis.sourceHost) && (
+                  <div className="space-y-1" data-testid="auth-detail-source">
+                    <p className="text-muted-foreground">Earliest source</p>
+                    {result.headerAnalysis.sourceIp && (
+                      <p className="font-mono break-all">{sanitizePlain(result.headerAnalysis.sourceIp)}</p>
+                    )}
+                    {result.headerAnalysis.sourceHost && (
+                      <p className="font-mono break-all text-muted-foreground">{sanitizePlain(result.headerAnalysis.sourceHost)}</p>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      {result.infrastructureAnalysis && (
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-medium flex items-center gap-2">
+              <Server className="w-4 h-4 text-muted-foreground" />
+              Mail Infrastructure
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                <div className="space-y-1" data-testid="infra-source-ip">
+                  <p className="text-muted-foreground">Source IP</p>
+                  <p className="font-mono break-all">{result.infrastructureAnalysis.sourceIp ? sanitizePlain(result.infrastructureAnalysis.sourceIp) : "not available"}</p>
+                </div>
+                <div className="space-y-1" data-testid="infra-source-host">
+                  <p className="text-muted-foreground">Source host</p>
+                  <p className="font-mono break-all">{result.infrastructureAnalysis.sourceHost ? sanitizePlain(result.infrastructureAnalysis.sourceHost) : "not available"}</p>
+                </div>
+                <div className="space-y-1" data-testid="infra-detected-provider">
+                  <p className="text-muted-foreground">Detected provider</p>
+                  <p className="font-medium">{sanitizePlain(result.infrastructureAnalysis.detectedProvider)}</p>
+                </div>
+                <div className="space-y-1" data-testid="infra-expected-provider">
+                  <p className="text-muted-foreground">Expected provider</p>
+                  <p className="font-medium">{result.infrastructureAnalysis.expectedProvider ? sanitizePlain(result.infrastructureAnalysis.expectedProvider) : "not available"}</p>
+                </div>
+                <div className="space-y-1" data-testid="infra-ip-type">
+                  <p className="text-muted-foreground">IP type</p>
+                  <p className="font-medium capitalize">{sanitizePlain(result.infrastructureAnalysis.ipType.replace(/-/g, " "))}</p>
+                </div>
+                <div className="space-y-1" data-testid="infra-alignment">
+                  <p className="text-muted-foreground">Infrastructure match</p>
+                  <p className="font-medium capitalize">{sanitizePlain(result.infrastructureAnalysis.alignment)}</p>
+                </div>
+                {result.infrastructureAnalysis.matchedRange && (
+                  <div className="space-y-1 sm:col-span-2" data-testid="infra-range">
+                    <p className="text-muted-foreground">Matched IP range</p>
+                    <p className="font-mono break-all">{sanitizePlain(result.infrastructureAnalysis.matchedRange)}</p>
+                  </div>
+                )}
+              </div>
+
+              {result.infrastructureAnalysis.findings.length > 0 && (
+                <ul className="space-y-1.5">
+                  {result.infrastructureAnalysis.findings.map((finding, i) => (
+                    <li key={i} className="flex gap-2 text-xs" data-testid={`infra-finding-${i}`}>
+                      <AlertTriangle className="w-3 h-3 text-amber-500 mt-0.5 shrink-0" />
+                      <span>{finding}</span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
           </CardContent>
         </Card>
       )}

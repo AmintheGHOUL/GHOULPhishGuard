@@ -6,9 +6,26 @@ export function safeUrl(raw: string): URL | null {
   }
 }
 
+export function extractEmailAddress(value: string): string {
+  if (!value) return "";
+
+  const angleMatch = value.match(/<([^>]+)>/);
+  if (angleMatch) {
+    return angleMatch[1].trim().toLowerCase();
+  }
+
+  const emailMatch = value.match(/[\w.+-]+@[\w.-]+/);
+  if (emailMatch) {
+    return emailMatch[0].trim().toLowerCase();
+  }
+
+  return value.trim().toLowerCase();
+}
+
 export function getDomainFromEmail(email: string): string {
-  if (!email || !email.includes("@")) return "";
-  return (email.split("@").pop() || "").toLowerCase().trim();
+  const normalizedEmail = extractEmailAddress(email);
+  if (!normalizedEmail || !normalizedEmail.includes("@")) return "";
+  return (normalizedEmail.split("@").pop() || "").toLowerCase().trim();
 }
 
 const MULTI_PART_TLDS = new Set([

@@ -6,7 +6,7 @@ import {
   Globe,
   Brain,
   ShieldCheck,
-  LinkIcon,
+  Link as LinkIcon,
   Paperclip,
   Clock,
   Mail,
@@ -17,6 +17,7 @@ import {
   Layers,
   Search,
   Database,
+  Server,
 } from "lucide-react";
 
 export default function Techniques() {
@@ -28,7 +29,8 @@ export default function Techniques() {
           Detection Techniques
         </h1>
         <p className="text-muted-foreground">
-          GHOULPhishGuard uses multiple layers of analysis to detect phishing emails. Here is how each technique works and what it catches.
+          This page describes the techniques currently implemented in GHOULPhishGuard. The analyzer combines
+          rule-based checks, header parsing, URL reputation, and multiple text classifiers into one score.
         </p>
       </div>
 
@@ -36,7 +38,9 @@ export default function Techniques() {
         <CardContent className="pt-4">
           <h3 className="text-sm font-medium mb-3">How the Scoring Works</h3>
           <p className="text-xs text-muted-foreground leading-relaxed">
-            Each detection technique contributes points to the overall risk score (0 to 100). Multiple signals combined produce a more confident result. A single signal alone might only flag the email as "suspicious," but several signals together can confirm it as "likely phishing."
+            Each technique contributes risk points. The final score is clamped to 0-100 and then mapped to a verdict.
+            DistilBERT is also calibrated against the rest of the evidence, so a single aggressive ML score does not
+            automatically override clean authentication and weak corroboration.
           </p>
           <div className="grid grid-cols-4 gap-2 mt-4">
             <div className="text-center p-2 rounded bg-emerald-500/10">
@@ -64,34 +68,26 @@ export default function Techniques() {
           <CardHeader className="pb-2">
             <CardTitle className="text-base font-semibold flex items-center gap-2">
               <Brain className="w-5 h-5 text-primary" />
-              1. TF-IDF Text Mining
+              1. TF-IDF Keyword Scoring
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
             <p className="text-sm text-muted-foreground leading-relaxed">
-              TF-IDF (Term Frequency - Inverse Document Frequency) is a text mining technique that measures how important a word is in a document compared to a larger collection of documents. We use it to detect phishing-specific language patterns.
+              The first text layer is a handcrafted TF-IDF scorer. It uses a phishing-focused term dictionary with
+              weighted single words and multi-word phrases, then lowers the score when legitimate newsletter markers
+              such as unsubscribe language are present.
             </p>
             <div className="bg-muted rounded-md p-3">
-              <p className="text-xs font-mono text-muted-foreground mb-2">How it works:</p>
-              <p className="text-xs font-mono">tf-idf(term) = tf(term) x idf(term)</p>
-              <ul className="text-xs text-muted-foreground mt-2 space-y-1">
-                <li><span className="font-medium text-foreground">TF (Term Frequency)</span> — how often a word appears in the email</li>
-                <li><span className="font-medium text-foreground">IDF (Inverse Document Frequency)</span> — how unique that word is across all emails (rare words in phishing get higher weight)</li>
-              </ul>
-            </div>
-            <div>
-              <p className="text-xs text-muted-foreground mb-2 flex items-center gap-1">
-                <BarChart3 className="w-3 h-3" />
-                Example high-IDF phishing words:
-              </p>
-              <div className="flex flex-wrap gap-1.5">
-                {["verify", "urgent", "suspended", "credentials", "unauthorized", "compromised", "click here", "within 24 hours", "act now", "dear customer"].map((term) => (
+              <p className="text-xs font-medium mb-1">What it looks for</p>
+              <div className="flex flex-wrap gap-1.5 mt-2">
+                {["verify", "urgent", "credential", "wire transfer", "within 24 hours", "click here", "microsoft account", "social security"].map((term) => (
                   <span key={term} className="px-2 py-0.5 rounded bg-muted text-xs font-mono">{term}</span>
                 ))}
               </div>
             </div>
             <p className="text-xs text-muted-foreground">
-              The classifier also includes "damper" terms (like "unsubscribe" and "privacy policy") that lower the score when they appear, since legitimate emails commonly include them.
+              This is not a live-trained pipeline inside the app. The weights are embedded in the code so the result is
+              deterministic and fast.
             </p>
             <p className="text-xs text-muted-foreground font-medium">Contribution: up to 20 points</p>
           </CardContent>
@@ -101,36 +97,26 @@ export default function Techniques() {
           <CardHeader className="pb-2">
             <CardTitle className="text-base font-semibold flex items-center gap-2">
               <Zap className="w-5 h-5 text-primary" />
-              2. TF-IDF + Linear SVM Classifier
+              2. Linear SVM-Style Scorer
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
             <p className="text-sm text-muted-foreground leading-relaxed">
-              A Support Vector Machine (SVM) is a machine learning model that draws a decision boundary between phishing and legitimate emails in high-dimensional feature space. We combine TF-IDF vectorization with a pre-trained Linear SVM for classification.
+              The second text layer is a fixed-vocabulary linear scorer inspired by a TF-IDF plus linear SVM pipeline.
+              The app embeds per-term IDF values, feature weights, a bias term, and extra bigram boosts, then converts
+              the final decision score into a probability with a sigmoid.
             </p>
             <div className="bg-muted rounded-md p-3">
-              <p className="text-xs font-mono text-muted-foreground mb-2">How it works:</p>
-              <p className="text-xs font-mono">decision = w . x + b</p>
-              <ul className="text-xs text-muted-foreground mt-2 space-y-1">
-                <li><span className="font-medium text-foreground">x</span> — TF-IDF feature vector (150 dimensions for vocabulary terms)</li>
-                <li><span className="font-medium text-foreground">w</span> — pre-trained weight vector (learned from phishing corpus)</li>
-                <li><span className="font-medium text-foreground">b</span> — bias term (decision threshold)</li>
-                <li><span className="font-medium text-foreground">sigmoid(decision)</span> — converts to probability (0-100%)</li>
-              </ul>
-            </div>
-            <div className="bg-muted rounded-md p-3">
-              <p className="text-xs font-medium mb-1">Bigram Feature Extraction</p>
-              <p className="text-xs text-muted-foreground">
-                Beyond single words, the SVM also detects two-word combinations (bigrams) that are strongly associated with phishing. This captures phrases like "account suspended," "verify identity," and "wire transfer" that are more suspicious as pairs than individually.
-              </p>
-              <div className="flex flex-wrap gap-1.5 mt-2">
-                {["account suspended", "verify identity", "wire transfer", "enable macros", "act immediately", "arrest warrant"].map((term) => (
-                  <span key={term} className="px-2 py-0.5 rounded bg-red-500/10 text-red-500 text-xs font-mono">{term}</span>
+              <p className="text-xs font-mono text-muted-foreground mb-2">decision = dot(tfidf, weights) + bias + bigram_boost</p>
+              <div className="flex flex-wrap gap-1.5">
+                {["account suspended", "verify identity", "wire transfer", "enable macros", "unusual activity", "security alert"].map((term) => (
+                  <span key={term} className="px-2 py-0.5 rounded bg-red-500/10 text-red-600 text-xs font-mono">{term}</span>
                 ))}
               </div>
             </div>
             <p className="text-xs text-muted-foreground">
-              The SVM outputs a phishing probability (0-100%) along with the top contributing features, showing which words most influenced the classification decision.
+              It also includes negative features such as privacy-policy or unsubscribe-style language, so the score is
+              less likely to spike on routine newsletters.
             </p>
             <p className="text-xs text-muted-foreground font-medium">Contribution: up to 15 points</p>
           </CardContent>
@@ -140,44 +126,30 @@ export default function Techniques() {
           <CardHeader className="pb-2">
             <CardTitle className="text-base font-semibold flex items-center gap-2">
               <Brain className="w-5 h-5 text-primary" />
-              3. DistilBERT Deep Learning Classifier
+              3. DistilBERT Text Classifier
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
             <p className="text-sm text-muted-foreground leading-relaxed">
-              GHOULPhishGuard uses a real DistilBERT model fine-tuned specifically for phishing email detection. DistilBERT is a compressed version of BERT that retains 97% of the language understanding capability while being 60% faster and 40% smaller.
+              The deep-learning layer uses a real ONNX DistilBERT phishing model loaded locally through
+              <span className="font-mono"> @huggingface/transformers</span>. The current model source is
+              <span className="font-mono"> onnx-community/phishing-email-detection-distilbert_v2.4.1-ONNX</span>.
             </p>
             <div className="bg-emerald-500/10 rounded-md p-3">
-              <p className="text-xs font-medium text-emerald-700 mb-1">Real Model</p>
+              <p className="text-xs font-medium text-emerald-700 mb-1">How the output is used</p>
               <p className="text-xs text-muted-foreground">
-                Model: <span className="font-mono font-medium text-foreground">cybersectony/phishing-email-detection-distilbert_v2.4.1</span>
-              </p>
-              <p className="text-xs text-muted-foreground mt-1">
-                This model was trained on a large dataset of phishing and legitimate emails and runs locally using ONNX Runtime (quantized INT8 for efficiency). No data is sent to external servers.
-              </p>
-            </div>
-            <div className="bg-muted rounded-md p-3">
-              <p className="text-xs font-mono text-muted-foreground mb-2">Architecture:</p>
-              <ul className="text-xs text-muted-foreground space-y-1">
-                <li><span className="font-medium text-foreground">WordPiece Tokenization</span> — splits text into subword tokens using a 30K vocabulary</li>
-                <li><span className="font-medium text-foreground">6 Transformer Layers</span> — each with multi-head self-attention and feed-forward networks</li>
-                <li><span className="font-medium text-foreground">Self-Attention</span> — each token "attends" to every other token to capture context</li>
-                <li><span className="font-medium text-foreground">Classification Head</span> — final layer outputs phishing vs legitimate probability</li>
-              </ul>
-            </div>
-            <div className="bg-muted rounded-md p-3">
-              <p className="text-xs font-medium mb-1">Self-Attention Mechanism</p>
-              <p className="text-xs text-muted-foreground">
-                The key innovation of BERT is self-attention. For each word, it computes how much "attention" to pay to every other word in the email. This means it can understand that "click" near "verify" and "suspended" is suspicious, even if those words are far apart in the text.
-              </p>
-              <p className="text-xs font-mono text-muted-foreground mt-2">
-                attention(Q, K, V) = softmax(QK&#x1D40; / &#x221A;d) . V
+                The analyzer sums the phishing-like labels returned by the model, caches the result, and exposes the top
+                label and probability in the UI. If the real model is unavailable, the app falls back to the simulated
+                BERT path so analysis still completes.
               </p>
             </div>
             <p className="text-xs text-muted-foreground">
-              If the real model is loading or unavailable, GHOULPhishGuard falls back to a simulated BERT classifier with pre-trained weights for uninterrupted analysis.
+              DistilBERT is powerful but aggressive, so the ensemble downweights it when authentication is clean and the
+              rest of the evidence is weak.
             </p>
-            <p className="text-xs text-muted-foreground font-medium">Contribution: up to 30 points (real model) / 15 points (simulated fallback)</p>
+            <p className="text-xs text-muted-foreground font-medium">
+              Contribution: up to 30 points before calibration, or up to 15 points for the simulated fallback
+            </p>
           </CardContent>
         </Card>
 
@@ -186,9 +158,11 @@ export default function Techniques() {
             <div className="flex items-start gap-3">
               <Layers className="w-5 h-5 text-primary mt-0.5 shrink-0" />
               <div>
-                <p className="text-sm font-medium mb-2">Ensemble Scoring</p>
+                <p className="text-sm font-medium mb-2">Ensemble Calibration</p>
                 <p className="text-xs text-muted-foreground leading-relaxed">
-                  All three ML classifiers (TF-IDF, SVM, BERT) contribute to the final score independently. Using multiple models together is called an "ensemble" approach — it is more robust than any single model because different classifiers catch different types of phishing. If all three agree the email is phishing, the combined ML contribution can reach up to 50 points. The remaining points come from rule-based checks (headers, links, domains, attachments).
+                  The three ML layers run independently, but the final score is not a blind sum. DistilBERT is
+                  moderated when SPF, DKIM, and DMARC all pass and the non-BERT evidence stays weak. That reduces false
+                  positives on benign newsletters, receipts, and routine account messages.
                 </p>
               </div>
             </div>
@@ -204,49 +178,29 @@ export default function Techniques() {
           </CardHeader>
           <CardContent className="space-y-3">
             <p className="text-sm text-muted-foreground leading-relaxed">
-              Attackers often create domain names that look similar to real companies. We use three methods to catch these:
+              The sender domain is checked against a brand list and alias list. The implementation looks for close
+              spellings, look-alike characters, explicit brand names inside fake domains, and keyword matches tied to
+              known companies.
             </p>
-            <div className="space-y-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               <div className="bg-muted rounded-md p-3">
-                <p className="text-xs font-medium mb-1">Levenshtein Distance (Typosquatting)</p>
-                <p className="text-xs text-muted-foreground">
-                  Measures how many character changes are needed to turn one domain into another. If a domain is only 1-2 changes away from a known brand, it is flagged as a typosquatting attempt.
-                </p>
-                <div className="mt-2 space-y-1 text-xs font-mono">
-                  <p><span className="text-red-500">paypa1.com</span> → paypal.com <span className="text-muted-foreground">(1 change: "1" → "l")</span></p>
-                  <p><span className="text-red-500">arnazon.com</span> → amazon.com <span className="text-muted-foreground">(1 change: "rn" → "m")</span></p>
-                  <p><span className="text-red-500">goggle.com</span> → google.com <span className="text-muted-foreground">(1 change: "o" → "g")</span></p>
-                </div>
+                <p className="text-xs font-medium mb-1">Typosquatting</p>
+                <p className="text-xs text-muted-foreground">Levenshtein distance of 1-2 from a tracked brand label.</p>
               </div>
-
               <div className="bg-muted rounded-md p-3">
-                <p className="text-xs font-medium mb-1">Homoglyph Detection (Look-alike Characters)</p>
-                <p className="text-xs text-muted-foreground">
-                  Detects when attackers use characters that look visually similar to fool human readers.
-                </p>
-                <div className="mt-2 space-y-1 text-xs font-mono">
-                  <p><span className="text-red-500">rn</span> looks like <span className="text-emerald-500">m</span></p>
-                  <p><span className="text-red-500">0</span> (zero) looks like <span className="text-emerald-500">o</span> (letter)</p>
-                  <p><span className="text-red-500">1</span> (one) looks like <span className="text-emerald-500">l</span> (letter L)</p>
-                  <p><span className="text-red-500">vv</span> looks like <span className="text-emerald-500">w</span></p>
-                </div>
+                <p className="text-xs font-medium mb-1">Homoglyphs</p>
+                <p className="text-xs text-muted-foreground">Patterns like 0 for o, rn for m, or vv for w.</p>
               </div>
-
               <div className="bg-muted rounded-md p-3">
-                <p className="text-xs font-medium mb-1">Brand Name in Domain</p>
-                <p className="text-xs text-muted-foreground">
-                  Catches when a brand name is embedded in a completely different domain to create a false sense of legitimacy.
-                </p>
-                <div className="mt-2 text-xs font-mono">
-                  <p><span className="text-red-500">microsoft-security-alert.com</span> <span className="text-muted-foreground">— not microsoft.com</span></p>
-                  <p><span className="text-red-500">paypal-login-verify.com</span> <span className="text-muted-foreground">— not paypal.com</span></p>
-                </div>
+                <p className="text-xs font-medium mb-1">Brand in fake domain</p>
+                <p className="text-xs text-muted-foreground">Examples: microsoft-alert-check.com or paypal-login-verify.com.</p>
+              </div>
+              <div className="bg-muted rounded-md p-3">
+                <p className="text-xs font-medium mb-1">Brand keyword match</p>
+                <p className="text-xs text-muted-foreground">Brand terms tied to 30+ tracked companies and services.</p>
               </div>
             </div>
-            <p className="text-xs text-muted-foreground">
-              We track 30+ major brands (Microsoft, Google, PayPal, Amazon, banks, shipping companies) and their legitimate alternative domains to avoid false positives.
-            </p>
-            <p className="text-xs text-muted-foreground font-medium">Contribution: 20-30 points</p>
+            <p className="text-xs text-muted-foreground font-medium">Contribution: 20-30 points depending on the match type</p>
           </CardContent>
         </Card>
 
@@ -254,37 +208,61 @@ export default function Techniques() {
           <CardHeader className="pb-2">
             <CardTitle className="text-base font-semibold flex items-center gap-2">
               <ShieldCheck className="w-5 h-5 text-primary" />
-              5. Email Authentication (SPF / DKIM / DMARC)
+              5. Email Authentication and Alignment
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
             <p className="text-sm text-muted-foreground leading-relaxed">
-              Email has built-in security systems that verify whether the sender is who they claim to be. We parse the email headers to check all three:
+              When raw headers are present, the analyzer parses <span className="font-mono">Authentication-Results</span>,
+              <span className="font-mono"> Received-SPF</span>, and <span className="font-mono"> Received</span> headers.
+              It does more than pass or fail badges: it also extracts the domains behind SPF, DKIM, and DMARC and checks
+              whether they align with the visible From domain.
             </p>
-            <div className="space-y-3">
-              <div className="bg-muted rounded-md p-3">
-                <p className="text-xs font-medium mb-1">SPF (Sender Policy Framework)</p>
-                <p className="text-xs text-muted-foreground">
-                  Checks if the sending server is authorized to send email for the claimed domain. If the domain says "I only send from servers A and B" but the email came from server C, SPF fails.
-                </p>
-              </div>
-              <div className="bg-muted rounded-md p-3">
-                <p className="text-xs font-medium mb-1">DKIM (DomainKeys Identified Mail)</p>
-                <p className="text-xs text-muted-foreground">
-                  Verifies that the email content has not been altered in transit. The sending server signs the email with a cryptographic key, and the receiving server checks that signature.
-                </p>
-              </div>
-              <div className="bg-muted rounded-md p-3">
-                <p className="text-xs font-medium mb-1">DMARC (Domain-based Message Authentication)</p>
-                <p className="text-xs text-muted-foreground">
-                  Combines SPF and DKIM results with the domain owner's policy. It tells the receiving server what to do if authentication fails — reject the email, quarantine it, or let it through.
-                </p>
+            <div className="bg-muted rounded-md p-3">
+              <p className="text-xs font-medium mb-1">Parsed fields</p>
+              <div className="flex flex-wrap gap-1.5 mt-2">
+                {["spf=smtp.mailfrom", "dkim=header.d", "dkim=header.s", "dmarc=header.from", "Received hop count"].map((term) => (
+                  <span key={term} className="px-2 py-0.5 rounded bg-muted text-xs font-mono">{term}</span>
+                ))}
               </div>
             </div>
             <p className="text-xs text-muted-foreground">
-              When all three pass, you can be more confident the email is legitimate. When they fail, it is a strong indicator of spoofing. This analysis requires the raw email headers from "Show Original."
+              SPF fail adds 20 points, DKIM fail adds 15, and DMARC fail adds 20. Additional points can be added for
+              alignment oddities and for unusually long relay chains.
             </p>
-            <p className="text-xs text-muted-foreground font-medium">Contribution: up to 55 points (combined failures)</p>
+            <p className="text-xs text-muted-foreground font-medium">
+              Typical failure contribution: up to 55 points, with extra alignment and hop penalties in unusual cases
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base font-semibold flex items-center gap-2">
+              <Server className="w-5 h-5 text-primary" />
+              6. Mail Infrastructure and IP Range Matching
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <p className="text-sm text-muted-foreground leading-relaxed">
+              The analyzer extracts the earliest source IP from <span className="font-mono">client-ip</span> in
+              <span className="font-mono"> Received-SPF</span> or from the earliest Received hop. It then classifies the
+              IP type and checks whether the host or address matches known outbound mail infrastructure.
+            </p>
+            <div className="bg-muted rounded-md p-3">
+              <p className="text-xs font-medium mb-1">Current provider mappings</p>
+              <div className="flex flex-wrap gap-1.5 mt-2">
+                {["Microsoft 365", "Google Workspace", "Amazon SES", "SendGrid", "Mailchimp"].map((provider) => (
+                  <span key={provider} className="px-2 py-0.5 rounded bg-muted text-xs font-mono">{provider}</span>
+                ))}
+              </div>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              If a message claims to be from a Microsoft 365 sender but the earliest infrastructure matches Google
+              Workspace, the mismatch is surfaced as a finding. Private, loopback, reserved, link-local, and similar IP
+              types are also flagged when they appear as the earliest external source.
+            </p>
+            <p className="text-xs text-muted-foreground font-medium">Contribution: up to 18 points</p>
           </CardContent>
         </Card>
 
@@ -292,21 +270,23 @@ export default function Techniques() {
           <CardHeader className="pb-2">
             <CardTitle className="text-base font-semibold flex items-center gap-2">
               <LinkIcon className="w-5 h-5 text-primary" />
-              6. Link Deception Analysis
+              7. Link Extraction and Deception Checks
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
             <p className="text-sm text-muted-foreground leading-relaxed">
-              We compare the visible link text with the actual destination URL. Phishing emails often display a legitimate-looking URL while hiding the real malicious destination.
+              Links are not limited to the manual input fields. The analyzer automatically extracts http, https, and
+              www-style links from the pasted body text and merges them with any explicitly provided links before scoring.
             </p>
             <div className="bg-muted rounded-md p-3 text-xs font-mono space-y-1">
               <p className="text-muted-foreground">Displayed: <span className="text-emerald-500">https://paypal.com/verify</span></p>
               <p className="text-muted-foreground">Actual: <span className="text-red-500">https://paypal-login-safe-check.com/verify</span></p>
             </div>
             <p className="text-xs text-muted-foreground">
-              We also detect when links contain brand names in the URL to impersonate them (e.g., a link with "microsoft" in the hostname that does not actually go to microsoft.com).
+              A visible URL that does not match its actual destination adds risk. When brand context is available, links
+              that include a brand name but resolve to a different base domain can add even more.
             </p>
-            <p className="text-xs text-muted-foreground font-medium">Contribution: 15-40 points</p>
+            <p className="text-xs text-muted-foreground font-medium">Contribution: 15-40 points depending on the mismatch</p>
           </CardContent>
         </Card>
 
@@ -314,32 +294,34 @@ export default function Techniques() {
           <CardHeader className="pb-2">
             <CardTitle className="text-base font-semibold flex items-center gap-2">
               <FileText className="w-5 h-5 text-primary" />
-              7. Content Pattern Analysis
+              8. Content Pattern Rules
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
             <p className="text-sm text-muted-foreground leading-relaxed">
-              Beyond TF-IDF, we use rule-based pattern matching to detect specific categories of phishing language:
+              Separate from the ML models, the analyzer applies rule-based pattern checks to the subject, body, and link
+              text. These rules are simple, explainable, and useful even when the message is too short for the ML layers
+              to be confident.
             </p>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               <div className="bg-muted rounded-md p-3">
-                <p className="text-xs font-medium mb-1">Urgency Patterns (+10)</p>
-                <p className="text-xs text-muted-foreground">"immediately," "within 24 hours," "account will be closed," "final warning"</p>
+                <p className="text-xs font-medium mb-1">Urgency (+10)</p>
+                <p className="text-xs text-muted-foreground">urgent, immediately, action required, final warning</p>
               </div>
               <div className="bg-muted rounded-md p-3">
-                <p className="text-xs font-medium mb-1">Emotional Pressure (+8)</p>
-                <p className="text-xs text-muted-foreground">"account compromised," "security alert," "won a prize," "unusual login"</p>
+                <p className="text-xs font-medium mb-1">Emotional pressure (+8)</p>
+                <p className="text-xs text-muted-foreground">security alert, unusual login, account compromised</p>
               </div>
               <div className="bg-muted rounded-md p-3">
-                <p className="text-xs font-medium mb-1">Sensitive Info Requests (+12)</p>
-                <p className="text-xs text-muted-foreground">"password," "bank account," "credit card," "routing number," "payroll details"</p>
+                <p className="text-xs font-medium mb-1">Sensitive requests (+12)</p>
+                <p className="text-xs text-muted-foreground">password, SSN, bank account, verification code</p>
               </div>
               <div className="bg-muted rounded-md p-3">
-                <p className="text-xs font-medium mb-1">Platform Abuse (+8)</p>
-                <p className="text-xs text-muted-foreground">Links to Google Forms, Google Sites, SharePoint, or other legitimate platforms used for phishing</p>
+                <p className="text-xs font-medium mb-1">Abused platforms (+8)</p>
+                <p className="text-xs text-muted-foreground">Google Forms, Google Sites, SharePoint, Notion, Dropbox</p>
               </div>
             </div>
-            <p className="text-xs text-muted-foreground font-medium">Contribution: up to 38 points (combined)</p>
+            <p className="text-xs text-muted-foreground font-medium">Contribution: up to 38 points</p>
           </CardContent>
         </Card>
 
@@ -347,19 +329,24 @@ export default function Techniques() {
           <CardHeader className="pb-2">
             <CardTitle className="text-base font-semibold flex items-center gap-2">
               <Mail className="w-5 h-5 text-primary" />
-              8. Domain Mismatch Detection
+              9. Sender, Reply-To, and Return-Path Mismatch
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
             <p className="text-sm text-muted-foreground leading-relaxed">
-              We compare the "From" address with the "Reply-To" and "Return-Path" addresses. In phishing emails, these often point to different domains because the attacker wants replies to go to their own address.
+              The analyzer compares the base domain of the visible From address with the Reply-To and Return-Path
+              addresses. Phishing messages often ask users to trust one identity while replies or bounces route to
+              another domain.
             </p>
             <div className="bg-muted rounded-md p-3 text-xs font-mono space-y-1">
               <p className="text-muted-foreground">From: <span className="text-foreground">security@paypal.com</span></p>
-              <p className="text-muted-foreground">Reply-To: <span className="text-red-500">support@paypal-verify-account.com</span></p>
+              <p className="text-muted-foreground">Reply-To: <span className="text-red-500">support@paypal-reset-check.com</span></p>
+              <p className="text-muted-foreground">Return-Path: <span className="text-red-500">mailer@other-domain.org</span></p>
             </div>
             <p className="text-xs text-muted-foreground">
-              Note: Some legitimate emails have different Return-Path addresses (e.g., emails sent through SendGrid or Mailchimp). GHOULPhishGuard accounts for this and does not over-flag these cases.
+              This is a useful signal, but not proof by itself. Some legitimate senders do use separate bounce
+              infrastructure, which is why it should be interpreted together with SPF, DKIM, DMARC, and infrastructure
+              findings.
             </p>
             <p className="text-xs text-muted-foreground font-medium">Contribution: up to 32 points</p>
           </CardContent>
@@ -369,19 +356,19 @@ export default function Techniques() {
           <CardHeader className="pb-2">
             <CardTitle className="text-base font-semibold flex items-center gap-2">
               <Paperclip className="w-5 h-5 text-primary" />
-              9. Attachment Risk Assessment
+              10. Attachment Risk Checks
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
             <p className="text-sm text-muted-foreground leading-relaxed">
-              Certain file types are commonly used in phishing attacks because they can execute code or contain macros. We flag emails containing these risky file types:
+              The analyzer flags attachment extensions commonly used in phishing and malware delivery.
             </p>
             <div className="flex flex-wrap gap-1.5 mt-1">
               {[".zip", ".exe", ".js", ".iso", ".html", ".docm", ".xlsm", ".scr"].map((ext) => (
-                <span key={ext} className="px-2 py-0.5 rounded bg-red-500/10 text-red-500 text-xs font-mono">{ext}</span>
+                <span key={ext} className="px-2 py-0.5 rounded bg-red-500/10 text-red-600 text-xs font-mono">{ext}</span>
               ))}
             </div>
-            <p className="text-xs text-muted-foreground font-medium">Contribution: 12 points</p>
+            <p className="text-xs text-muted-foreground font-medium">Contribution: 12 points when risky attachments are present</p>
           </CardContent>
         </Card>
 
@@ -389,14 +376,15 @@ export default function Techniques() {
           <CardHeader className="pb-2">
             <CardTitle className="text-base font-semibold flex items-center gap-2">
               <Clock className="w-5 h-5 text-primary" />
-              10. Time-of-Day Anomaly Detection
+              11. Time-of-Day Anomaly Detection
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
             <p className="text-sm text-muted-foreground leading-relaxed">
-              Phishing campaigns are often automated and can fire at unusual hours. We analyze the email's Date header to flag emails sent during suspicious times, particularly late-night weekend hours, which are common for automated phishing.
+              If a valid Date header is available, the analyzer checks the UTC send time. Messages sent between 01:00
+              and 05:00 UTC are flagged as unusual, and late-night weekend mail is treated as an even stronger signal.
             </p>
-            <p className="text-xs text-muted-foreground font-medium">Contribution: 8-10 points</p>
+            <p className="text-xs text-muted-foreground font-medium">Contribution: 8 points for unusual hours, or 10 points for weekend late-night patterns</p>
           </CardContent>
         </Card>
 
@@ -404,30 +392,26 @@ export default function Techniques() {
           <CardHeader className="pb-2">
             <CardTitle className="text-base font-semibold flex items-center gap-2">
               <Search className="w-5 h-5 text-primary" />
-              11. URL Reputation & Domain Age
+              12. URL Reputation and Domain Age
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
             <p className="text-sm text-muted-foreground leading-relaxed">
-              Newly registered domains are a strong phishing indicator. Attackers frequently register domains just hours before a campaign and discard them afterwards. GHOULPhishGuard queries RDAP (Registration Data Access Protocol) to determine when a domain was created.
+              For up to three relevant domains, the analyzer performs an RDAP lookup through
+              <span className="font-mono"> rdap.org</span> and checks whether the domain is newly registered, uses a
+              high-risk TLD, or sits on a free hosting platform.
             </p>
             <div className="bg-muted rounded-md p-3">
-              <p className="text-xs font-mono text-muted-foreground mb-2">Domain age scoring:</p>
+              <p className="text-xs font-medium mb-1">Age scoring</p>
               <ul className="text-xs text-muted-foreground space-y-1">
-                <li><span className="font-medium text-red-500">&lt; 7 days</span> — extremely suspicious (+15 points)</li>
-                <li><span className="font-medium text-orange-500">&lt; 30 days</span> — very recently created (+10 points)</li>
-                <li><span className="font-medium text-amber-500">&lt; 90 days</span> — relatively new (+5 points)</li>
-              </ul>
-            </div>
-            <div className="bg-muted rounded-md p-3">
-              <p className="text-xs font-medium mb-1">Additional Checks</p>
-              <ul className="text-xs text-muted-foreground space-y-1">
-                <li><span className="font-medium text-foreground">Suspicious TLDs</span> — flags 37+ high-risk TLDs (.tk, .ml, .xyz, .top, etc.) commonly abused by phishing campaigns (+8 points)</li>
-                <li><span className="font-medium text-foreground">Free Hosting Detection</span> — identifies domains on free hosting platforms (Heroku, Netlify, ngrok, etc.) that are commonly used for throwaway phishing sites (+6 points)</li>
+                <li><span className="font-medium text-red-500">&lt; 7 days</span> - 15 points</li>
+                <li><span className="font-medium text-orange-500">&lt; 30 days</span> - 10 points</li>
+                <li><span className="font-medium text-amber-500">&lt; 90 days</span> - 5 points</li>
               </ul>
             </div>
             <p className="text-xs text-muted-foreground">
-              RDAP lookups use a 3-second timeout. If the lookup fails or is unavailable, the analysis continues without domain age data — no external dependency is required.
+              TLD risk adds 8 points and free hosting adds 6. If RDAP is unavailable, analysis continues without age
+              data rather than failing the request.
             </p>
             <p className="text-xs text-muted-foreground font-medium">Contribution: up to 20 points</p>
           </CardContent>
@@ -437,46 +421,38 @@ export default function Techniques() {
           <CardHeader className="pb-2">
             <CardTitle className="text-base font-semibold flex items-center gap-2">
               <Database className="w-5 h-5 text-primary" />
-              12. Threat Intelligence Enrichment
+              13. Threat Intel Heuristics
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
             <p className="text-sm text-muted-foreground leading-relaxed">
-              GHOULPhishGuard cross-references domains and URLs against multiple threat intelligence sources to identify known phishing infrastructure.
+              The threat-intel layer uses local heuristics on domains and URLs, plus optional Google Safe Browsing
+              checks for up to three hosts. It is not a full commercial intel feed, but it catches a broad set of
+              suspicious domain traits.
             </p>
-            <div className="space-y-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               <div className="bg-muted rounded-md p-3">
-                <p className="text-xs font-medium mb-1">Domain Entropy Scoring</p>
-                <p className="text-xs text-muted-foreground">
-                  Calculates Shannon entropy to detect randomly generated domain names. Phishing domains often use random character strings (e.g., "xk4j9f2m.xyz") that have high entropy scores. Domains with entropy above 3.5 and length above 10 characters are flagged as suspicious.
-                </p>
-                <p className="text-xs font-mono text-muted-foreground mt-2">
-                  H = -&#x2211; p(x) log&#x2082; p(x)
-                </p>
+                <p className="text-xs font-medium mb-1">Entropy and naming patterns</p>
+                <p className="text-xs text-muted-foreground">High-entropy names, phishing keyword patterns, excessive subdomains</p>
               </div>
               <div className="bg-muted rounded-md p-3">
-                <p className="text-xs font-medium mb-1">Phishing Pattern Database</p>
-                <p className="text-xs text-muted-foreground">
-                  Matches domains against 20+ known phishing naming patterns including "secure-login," "account-verify," "reset-password," and brand+action combinations (e.g., "paypal-login," "microsoft-verify").
-                </p>
+                <p className="text-xs font-medium mb-1">Infrastructure clues</p>
+                <p className="text-xs text-muted-foreground">Shorteners, raw IP URLs, free-hosting platforms, suspicious TLDs</p>
               </div>
               <div className="bg-muted rounded-md p-3">
-                <p className="text-xs font-medium mb-1">URL Shortener Detection</p>
-                <p className="text-xs text-muted-foreground">
-                  Identifies 20+ URL shortener services (bit.ly, tinyurl.com, t.co, etc.) that are often used to mask the real destination of phishing links.
-                </p>
+                <p className="text-xs font-medium mb-1">Homograph checks</p>
+                <p className="text-xs text-muted-foreground">Non-ASCII and xn-- domains that can mimic trusted brands</p>
               </div>
               <div className="bg-muted rounded-md p-3">
-                <p className="text-xs font-medium mb-1">Advanced Indicators</p>
-                <ul className="text-xs text-muted-foreground space-y-1 mt-1">
-                  <li><span className="font-medium text-foreground">Excessive subdomains</span> — more than 4 subdomain levels (e.g., secure.login.paypal.verify.evil.com)</li>
-                  <li><span className="font-medium text-foreground">Raw IP addresses</span> — links pointing to IP addresses instead of domain names</li>
-                  <li><span className="font-medium text-foreground">Homograph attacks</span> — non-ASCII characters that mimic standard Latin letters (IDN abuse)</li>
-                  <li><span className="font-medium text-foreground">Google Safe Browsing</span> — queries the Transparency API for known dangerous sites</li>
-                </ul>
+                <p className="text-xs font-medium mb-1">Safe Browsing</p>
+                <p className="text-xs text-muted-foreground">Optional Google Transparency lookup for dangerous-site signals</p>
               </div>
             </div>
-            <p className="text-xs text-muted-foreground font-medium">Contribution: up to 25 points</p>
+            <p className="text-xs text-muted-foreground">
+              The raw threat score can exceed the final contribution. In the final ensemble, this layer is capped before
+              being added to the overall risk score.
+            </p>
+            <p className="text-xs text-muted-foreground font-medium">Effective contribution: up to 25 points in the final score</p>
           </CardContent>
         </Card>
       </div>

@@ -2,10 +2,11 @@ import { createHash } from "crypto";
 
 let classifierPipeline: any = null;
 let modelLoadingPromise: Promise<any> | null = null;
-let modelLoadFailed = false;
+let lastModelLoadFailureAt: number | null = null;
 
 const MODEL_ID = "onnx-community/phishing-email-detection-distilbert_v2.4.1-ONNX";
 const MAX_TEXT_LENGTH = 2000;
+const MODEL_RETRY_DELAY_MS = 1000 * 60 * 5;
 
 const LABEL_MAP: Record<string, string> = {
   "LABEL_0": "legitimate_email",
@@ -47,9 +48,10 @@ function cleanCache() {
 
 async function loadModel() {
   if (classifierPipeline) return classifierPipeline;
-  if (modelLoadFailed) return null;
-
   if (modelLoadingPromise) return modelLoadingPromise;
+  if (lastModelLoadFailureAt && Date.now() - lastModelLoadFailureAt < MODEL_RETRY_DELAY_MS) {
+    return null;
+  }
 
   modelLoadingPromise = (async () => {
     try {
@@ -57,15 +59,16 @@ async function loadModel() {
       const { pipeline } = await import("@huggingface/transformers");
       classifierPipeline = await pipeline("text-classification", MODEL_ID, {
         dtype: "q8",
-        top_k: 4,
       });
+      lastModelLoadFailureAt = null;
       console.log(`[DistilBERT] Model loaded successfully.`);
       return classifierPipeline;
     } catch (err: any) {
       console.error(`[DistilBERT] Failed to load model: ${err.message}`);
-      modelLoadFailed = true;
-      modelLoadingPromise = null;
+      lastModelLoadFailureAt = Date.now();
       return null;
+    } finally {
+      modelLoadingPromise = null;
     }
   })();
 
@@ -103,7 +106,7 @@ export async function classifyWithRealBert(text: string): Promise<RealBertResult
   if (!classifier) return null;
 
   try {
-    const results = await classifier(truncated);
+    const results = await classifier(truncated, { top_k: 4 });
     if (!results || results.length === 0) return null;
 
     let phishingProb = 0;
@@ -150,5 +153,5 @@ export function isModelLoaded(): boolean {
 }
 
 export function isModelLoading(): boolean {
-  return modelLoadingPromise !== null && !classifierPipeline && !modelLoadFailed;
+  return modelLoadingPromise !== null && !classifierPipeline;
 }

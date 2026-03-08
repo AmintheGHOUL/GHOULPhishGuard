@@ -85,6 +85,35 @@ export interface ThreatIntelDetail {
   matchedIndicators: string[];
 }
 
+export interface HeaderAnalysisDetail {
+  spf: AuthDetail;
+  dkim: AuthDetail;
+  dmarc: AuthDetail;
+  receivedHops: number;
+  headersParsed: boolean;
+  spfMailFrom?: string;
+  spfAligned?: boolean;
+  dkimDomain?: string;
+  dkimSelector?: string;
+  dkimAligned?: boolean;
+  dmarcHeaderFrom?: string;
+  dmarcAligned?: boolean;
+  sourceIp?: string | null;
+  sourceHost?: string | null;
+}
+
+export interface InfrastructureAnalysisDetail {
+  score: number;
+  sourceIp: string | null;
+  sourceHost: string | null;
+  detectedProvider: string;
+  expectedProvider: string | null;
+  alignment: "aligned" | "mismatch" | "unknown";
+  matchedRange: string | null;
+  ipType: string;
+  findings: string[];
+}
+
 export interface AnalysisResult {
   riskScore: number;
   verdict: string;
@@ -92,13 +121,7 @@ export interface AnalysisResult {
   reasons: string[];
   userActions: string[];
   technicalDetails: Record<string, string>;
-  headerAnalysis?: {
-    spf: AuthDetail;
-    dkim: AuthDetail;
-    dmarc: AuthDetail;
-    receivedHops: number;
-    headersParsed: boolean;
-  };
+  headerAnalysis?: HeaderAnalysisDetail;
   tfidfAnalysis?: TfidfDetail;
   svmAnalysis?: SvmDetail;
   bertAnalysis?: BertDetail;
@@ -106,4 +129,5 @@ export interface AnalysisResult {
   timeAnomaly?: TimeAnomalyDetail;
   urlReputation?: UrlReputationDetail;
   threatIntel?: ThreatIntelDetail;
+  infrastructureAnalysis?: InfrastructureAnalysisDetail;
 }

@@ -1,5 +1,5 @@
 import { analyzeContent } from "./contentRules";
-import { extractFirstHttpLink, findDomainMismatch } from "./reputation";
+import { extractLinksFromText, findDomainMismatch, mergeLinks } from "./reputation";
 import { safeUrl, getDomainFromEmail, getBaseDomain } from "./domains";
 import { parseEmailHeaders, headerAuthFindings, hasRealAuthHeaders } from "./headerParser";
 import { classifyWithTfidf } from "./tfidfClassifier";
@@ -10,6 +10,7 @@ import { detectDomainImpersonation } from "./domainImpersonation";
 import { detectTimeAnomaly, extractDateFromHeaders } from "./timeAnomaly";
 import { checkUrlReputation } from "./urlReputation";
 import { analyzeThreatIntel } from "./threatIntel";
+import { analyzeMailInfrastructure } from "./mailInfrastructure";
 import type { EmailInput, AnalysisResult } from "@shared/schema";
 
 function detectSuspiciousAttachments(attachments: Array<{ filename: string }> = []) {
@@ -80,44 +81,133 @@ function dedupe(items: string[]): string[] {
   return Array.from(new Set(items)).slice(0, 12);
 }
 
+function areDomainsAligned(left: string, right: string): boolean | undefined {
+  if (!left || !right) return undefined;
+  return getBaseDomain(left) === getBaseDomain(right);
+}
+
+function hasStrongAuthPass(headerAnalysis: AnalysisResult["headerAnalysis"]): boolean {
+  return !!headerAnalysis?.headersParsed
+    && headerAnalysis.spf.status === "pass"
+    && headerAnalysis.dkim.status === "pass"
+    && headerAnalysis.dmarc.status === "pass";
+}
+
+function getBaseBertContribution(
+  probability: number,
+  modelSource: "real" | "simulated",
+): number {
+  if (modelSource === "real") {
+    if (probability > 0.8) return Math.round(probability * 30);
+    if (probability > 0.6) return Math.round(probability * 20);
+    if (probability > 0.4) return Math.round(probability * 10);
+    return 0;
+  }
+
+  if (probability >= 0.7) return Math.round(probability * 15);
+  if (probability >= 0.4) return Math.round(probability * 8);
+  return 0;
+}
+
+function calibrateBertContribution(
+  probability: number,
+  modelSource: "real" | "simulated",
+  nonBertScore: number,
+  strongAuthPass: boolean,
+): { contribution: number; baseContribution: number; calibration: string } {
+  const baseContribution = getBaseBertContribution(probability, modelSource);
+  if (baseContribution === 0) {
+    return { contribution: 0, baseContribution, calibration: "not_applied" };
+  }
+
+  if (strongAuthPass && nonBertScore < 10) {
+    return {
+      contribution: Math.min(baseContribution, 6),
+      baseContribution,
+      calibration: "downweighted_clean_auth_low_corroboration",
+    };
+  }
+
+  if (strongAuthPass && nonBertScore < 20) {
+    return {
+      contribution: Math.min(baseContribution, 10),
+      baseContribution,
+      calibration: "downweighted_clean_auth_mixed_signals",
+    };
+  }
+
+  if (nonBertScore < 15) {
+    return {
+      contribution: Math.min(baseContribution, 8),
+      baseContribution,
+      calibration: "downweighted_low_corroboration",
+    };
+  }
+
+  if (nonBertScore < 30) {
+    return {
+      contribution: Math.min(baseContribution, Math.max(10, Math.round(baseContribution * 0.6))),
+      baseContribution,
+      calibration: "moderated_partial_corroboration",
+    };
+  }
+
+  return {
+    contribution: baseContribution,
+    baseContribution,
+    calibration: "full_weight",
+  };
+}
+
 export async function analyzeEmail(email: EmailInput): Promise<AnalysisResult> {
   const bodyText = email.bodyText || "";
   const subject = email.subject || "";
   const rawHeaders = email.rawHeaders || "";
+  const inputSenderIdentity = email.fromEmail || "";
   let fromEmail = (email.fromEmail || "").toLowerCase();
   let replyTo = (email.replyTo || "").toLowerCase();
   let returnPath = (email.returnPath || "").toLowerCase();
   const attachments = email.attachments || [];
-  const links = email.links || [];
+  const userProvidedLinks = email.links || [];
+  const detectedLinks = extractLinksFromText(bodyText);
+  const links = mergeLinks(userProvidedLinks, detectedLinks);
   const observedBrands = email.observedBrandDomains || [];
 
   let score = 0;
   const reasons: string[] = [];
   let headerAnalysis: AnalysisResult["headerAnalysis"] = undefined;
+  let infrastructureAnalysis: AnalysisResult["infrastructureAnalysis"] = undefined;
+  const parsedHeaders = rawHeaders ? parseEmailHeaders(rawHeaders) : null;
 
-  if (rawHeaders && hasRealAuthHeaders(rawHeaders)) {
-    const parsed = parseEmailHeaders(rawHeaders);
+  if (parsedHeaders) {
+    if (!fromEmail && parsedHeaders.from) fromEmail = parsedHeaders.from.toLowerCase();
+    if (!replyTo && parsedHeaders.replyTo) replyTo = parsedHeaders.replyTo.toLowerCase();
+    if (!returnPath && parsedHeaders.returnPath) returnPath = parsedHeaders.returnPath.toLowerCase();
+  }
 
-    if (!fromEmail && parsed.from) fromEmail = parsed.from.toLowerCase();
-    if (!replyTo && parsed.replyTo) replyTo = parsed.replyTo.toLowerCase();
-    if (!returnPath && parsed.returnPath) returnPath = parsed.returnPath.toLowerCase();
+  if (parsedHeaders && (hasRealAuthHeaders(rawHeaders) || parsedHeaders.receivedChain.length > 0 || !!parsedHeaders.sourceIp)) {
+    headerAnalysis = {
+      spf: parsedHeaders.spf,
+      dkim: parsedHeaders.dkim,
+      dmarc: parsedHeaders.dmarc,
+      receivedHops: parsedHeaders.receivedChain.length,
+      headersParsed: true,
+      spfMailFrom: parsedHeaders.spfMailFrom || undefined,
+      spfAligned: areDomainsAligned(parsedHeaders.spfMailFrom, getDomainFromEmail(parsedHeaders.from)),
+      dkimDomain: parsedHeaders.dkimDomain || undefined,
+      dkimSelector: parsedHeaders.dkimSelector || undefined,
+      dkimAligned: areDomainsAligned(parsedHeaders.dkimDomain, getDomainFromEmail(parsedHeaders.from)),
+      dmarcHeaderFrom: parsedHeaders.dmarcHeaderFrom || undefined,
+      dmarcAligned: areDomainsAligned(parsedHeaders.dmarcHeaderFrom, getDomainFromEmail(parsedHeaders.from)),
+      sourceIp: parsedHeaders.sourceIp || null,
+      sourceHost: parsedHeaders.sourceHost || null,
+    };
+  }
 
-    const authFindings = headerAuthFindings(parsed);
+  if (parsedHeaders && hasRealAuthHeaders(rawHeaders)) {
+    const authFindings = headerAuthFindings(parsedHeaders);
     score += authFindings.score;
     reasons.push(...authFindings.findings);
-
-    headerAnalysis = {
-      spf: parsed.spf,
-      dkim: parsed.dkim,
-      dmarc: parsed.dmarc,
-      receivedHops: parsed.receivedChain.length,
-      headersParsed: true,
-    };
-  } else if (rawHeaders) {
-    const parsed = parseEmailHeaders(rawHeaders);
-    if (!fromEmail && parsed.from) fromEmail = parsed.from.toLowerCase();
-    if (!replyTo && parsed.replyTo) replyTo = parsed.replyTo.toLowerCase();
-    if (!returnPath && parsed.returnPath) returnPath = parsed.returnPath.toLowerCase();
   }
 
   const senderBaseDomain = getBaseDomain(getDomainFromEmail(fromEmail));
@@ -129,6 +219,18 @@ export async function analyzeEmail(email: EmailInput): Promise<AnalysisResult> {
     attachmentsFound: String(attachments.length),
     senderDomain: senderBaseDomain || "unknown",
   };
+  if (detectedLinks.length > 0) {
+    technicalDetails.bodyLinksExtracted = String(detectedLinks.length);
+  }
+
+  if (parsedHeaders) {
+    if (parsedHeaders.spfMailFrom) technicalDetails.spfMailFrom = parsedHeaders.spfMailFrom;
+    if (parsedHeaders.dkimDomain) technicalDetails.dkimDomain = parsedHeaders.dkimDomain;
+    if (parsedHeaders.dkimSelector) technicalDetails.dkimSelector = parsedHeaders.dkimSelector;
+    if (parsedHeaders.dmarcHeaderFrom) technicalDetails.dmarcHeaderFrom = parsedHeaders.dmarcHeaderFrom;
+    if (parsedHeaders.sourceIp) technicalDetails.sourceIp = parsedHeaders.sourceIp;
+    if (parsedHeaders.sourceHost) technicalDetails.sourceHost = parsedHeaders.sourceHost;
+  }
 
   const senderFullDomain = getDomainFromEmail(fromEmail);
   const impersonationCheck = detectDomainImpersonation(senderFullDomain);
@@ -162,7 +264,8 @@ export async function analyzeEmail(email: EmailInput): Promise<AnalysisResult> {
     }
   }
 
-  const contentAnalysis = analyzeContent(bodyText, subject, links);
+  const senderIdentity = (inputSenderIdentity || parsedHeaders?.fromRaw || fromEmail).toLowerCase();
+  const contentAnalysis = analyzeContent(bodyText, subject, links, senderIdentity);
   score += contentAnalysis.score;
   reasons.push(...contentAnalysis.findings);
 
@@ -186,6 +289,32 @@ export async function analyzeEmail(email: EmailInput): Promise<AnalysisResult> {
 
   technicalDetails.replyToDomain = mismatch.replyDomain || "not available";
   technicalDetails.returnPathDomain = mismatch.returnPathDomain || "not available";
+
+  if (parsedHeaders && (parsedHeaders.sourceIp || parsedHeaders.sourceHost)) {
+    infrastructureAnalysis = analyzeMailInfrastructure({
+      sourceIp: parsedHeaders.sourceIp,
+      sourceHost: parsedHeaders.sourceHost,
+      fromDomain: senderBaseDomain,
+      dkimDomain: parsedHeaders.dkimDomain,
+      spfMailFrom: parsedHeaders.spfMailFrom,
+      dmarcHeaderFrom: parsedHeaders.dmarcHeaderFrom,
+      spfStatus: parsedHeaders.spf.status,
+      dkimStatus: parsedHeaders.dkim.status,
+      dmarcStatus: parsedHeaders.dmarc.status,
+    });
+
+    score += infrastructureAnalysis.score;
+    reasons.push(...infrastructureAnalysis.findings);
+    technicalDetails.infrastructureProvider = infrastructureAnalysis.detectedProvider;
+    technicalDetails.infrastructureIpType = infrastructureAnalysis.ipType;
+    if (infrastructureAnalysis.expectedProvider) {
+      technicalDetails.infrastructureExpectedProvider = infrastructureAnalysis.expectedProvider;
+    }
+    if (infrastructureAnalysis.matchedRange) {
+      technicalDetails.infrastructureRange = infrastructureAnalysis.matchedRange;
+    }
+    technicalDetails.infrastructureAlignment = infrastructureAnalysis.alignment;
+  }
 
   const linkAnalysis = detectLinkDeception(links, observedBrands);
   score += linkAnalysis.score;
@@ -257,25 +386,6 @@ export async function analyzeEmail(email: EmailInput): Promise<AnalysisResult> {
   const realBertResult = await classifyWithRealBert(fullText);
 
   if (realBertResult) {
-    const bertContribution = realBertResult.phishingProbability > 0.8
-      ? Math.round(realBertResult.phishingProbability * 30)
-      : realBertResult.phishingProbability > 0.6
-        ? Math.round(realBertResult.phishingProbability * 20)
-        : realBertResult.phishingProbability > 0.4
-          ? Math.round(realBertResult.phishingProbability * 10)
-          : 0;
-    score += bertContribution;
-
-    if (realBertResult.phishingProbability >= 0.7) {
-      reasons.push(
-        `DistilBERT deep learning model classifies this as phishing (${Math.round(realBertResult.phishingProbability * 100)}% confidence).`
-      );
-    } else if (realBertResult.phishingProbability >= 0.4) {
-      reasons.push(
-        `DistilBERT model detected moderate phishing characteristics (${Math.round(realBertResult.phishingProbability * 100)}% probability).`
-      );
-    }
-
     bertAnalysis = {
       phishingProbability: realBertResult.phishingProbability,
       confidence: realBertResult.confidence,
@@ -292,19 +402,6 @@ export async function analyzeEmail(email: EmailInput): Promise<AnalysisResult> {
     const bertResult = classifyWithBert(fullText);
 
     if (bertResult.tokenCount > 2) {
-      const bertContribution = Math.round(bertResult.phishingProbability * 15);
-      score += bertContribution;
-
-      if (bertResult.phishingProbability >= 0.7) {
-        reasons.push(
-          `BERT simulated model classifies this as likely phishing (${Math.round(bertResult.phishingProbability * 100)}% confidence).`
-        );
-      } else if (bertResult.phishingProbability >= 0.4) {
-        reasons.push(
-          `BERT simulated model detected moderate phishing characteristics (${Math.round(bertResult.phishingProbability * 100)}% probability).`
-        );
-      }
-
       bertAnalysis = {
         phishingProbability: bertResult.phishingProbability,
         confidence: bertResult.confidence,
@@ -375,6 +472,43 @@ export async function analyzeEmail(email: EmailInput): Promise<AnalysisResult> {
     threatIntel = threatIntelResult;
   }
 
+  if (bertAnalysis) {
+    const nonBertScore = score;
+    const strongAuthPass = hasStrongAuthPass(headerAnalysis);
+    const bertCalibration = calibrateBertContribution(
+      bertAnalysis.phishingProbability,
+      bertAnalysis.modelSource,
+      nonBertScore,
+      strongAuthPass,
+    );
+
+    score += bertCalibration.contribution;
+    technicalDetails.bertContribution = String(bertCalibration.contribution);
+    if (bertCalibration.calibration !== "full_weight" && bertCalibration.calibration !== "not_applied") {
+      technicalDetails.bertCalibration = bertCalibration.calibration;
+    }
+
+    if (bertCalibration.contribution >= 8) {
+      if (bertCalibration.contribution < bertCalibration.baseContribution && strongAuthPass && nonBertScore < 20) {
+        reasons.push(
+          `DistilBERT flagged phishing-like wording, but sender authentication was clean and corroborating risk signals were limited.`
+        );
+      } else if (bertCalibration.contribution < bertCalibration.baseContribution && nonBertScore < 30) {
+        reasons.push(
+          `DistilBERT detected phishing-like wording, but the ensemble only found partial corroboration.`
+        );
+      } else if (bertAnalysis.phishingProbability >= 0.7) {
+        reasons.push(
+          `${bertAnalysis.modelSource === "real" ? "DistilBERT deep learning model" : "BERT simulated model"} classifies this as phishing (${Math.round(bertAnalysis.phishingProbability * 100)}% confidence).`
+        );
+      } else if (bertAnalysis.phishingProbability >= 0.4) {
+        reasons.push(
+          `${bertAnalysis.modelSource === "real" ? "DistilBERT model" : "BERT simulated model"} detected moderate phishing characteristics (${Math.round(bertAnalysis.phishingProbability * 100)}% probability).`
+        );
+      }
+    }
+  }
+
   score = Math.max(0, Math.min(100, score));
 
   const userActions: string[] = [];
@@ -404,5 +538,6 @@ export async function analyzeEmail(email: EmailInput): Promise<AnalysisResult> {
     timeAnomaly,
     urlReputation,
     threatIntel,
+    infrastructureAnalysis,
   };
 }
