@@ -610,7 +610,7 @@ Tested locally with:
 ### 1. Clone
 
 ```bash
-git clone https://github.com/<your-username>/Phish-Guard.git
+git clone https://github.com/AmintheGHOUL/GHOULPhishGuard.git
 cd Phish-Guard
 ```
 
